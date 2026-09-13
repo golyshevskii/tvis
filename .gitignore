@@ -1,0 +1,10 @@
+# Temporary files
+tmp/
+
+# Agents
+.agents/
+.claude/
+.codex/
+AGENTS.md
+CLAUDE.md
+skills-lock.json
