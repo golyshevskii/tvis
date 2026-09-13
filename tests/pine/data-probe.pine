@@ -1,0 +1,59 @@
+//@version=6
+indicator("tvis: EPS Data Probe", precision=8)
+
+// Diagnostic only. All requests use the chart symbol; never substitute production data.
+int fromTime = input.time(timestamp("01 Jan 2026 00:00 +0000"), "Log events from")
+string comparisonCurrency = input.string("JPY", "Comparison currency")
+string symbol = syminfo.tickerid
+float diluted = request.financial(symbol, "EARNINGS_PER_SHARE_DILUTED", "TTM", ignore_invalid_symbol=true)
+float basic = request.financial(symbol, "EARNINGS_PER_SHARE_BASIC", "TTM", ignore_invalid_symbol=true)
+float dilutedQuote = request.financial(symbol, "EARNINGS_PER_SHARE_DILUTED", "TTM", ignore_invalid_symbol=true, currency=syminfo.currency)
+float dilutedCompare = request.financial(symbol, "EARNINGS_PER_SHARE_DILUTED", "TTM", ignore_invalid_symbol=true, currency=comparisonCurrency)
+float dilutedEvent = request.financial(symbol, "EARNINGS_PER_SHARE_DILUTED", "TTM", gaps=barmerge.gaps_on, ignore_invalid_symbol=true)
+float estimateOn = request.earnings(symbol, earnings.estimate, gaps=barmerge.gaps_on, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
+float estimateOff = request.earnings(symbol, earnings.estimate, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
+float estimateQuote = request.earnings(symbol, earnings.estimate, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true, currency=syminfo.currency)
+float estimateCompare = request.earnings(symbol, earnings.estimate, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true, currency=comparisonCurrency)
+float actualOn = request.earnings(symbol, earnings.actual, gaps=barmerge.gaps_on, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true)
+float estimateFq = request.financial(symbol, "EARNINGS_ESTIMATE", "FQ", ignore_invalid_symbol=true)
+float estimateFh = request.financial(symbol, "EARNINGS_ESTIMATE", "FH", ignore_invalid_symbol=true)
+float estimateFy = request.financial(symbol, "EARNINGS_ESTIMATE", "FY", ignore_invalid_symbol=true)
+float forwardFq = request.financial(symbol, "PRICE_EARNINGS_FORWARD", "FQ", ignore_invalid_symbol=true)
+float forwardFy = request.financial(symbol, "PRICE_EARNINGS_FORWARD", "FY", ignore_invalid_symbol=true)
+
+// Each plot is an independent raw series, including snapshots intentionally shown on history.
+plot(diluted, "EPS diluted TTM")
+plot(basic, "EPS basic TTM")
+plot(dilutedQuote, "EPS diluted quote")
+plot(dilutedCompare, "EPS diluted comparison")
+plot(dilutedEvent, "EPS diluted gaps_on", style=plot.style_circles)
+plot(estimateOn, "Earnings estimate gaps_on", style=plot.style_circles)
+plot(estimateOff, "Earnings estimate gaps_off")
+plot(estimateQuote, "Earnings estimate quote")
+plot(estimateCompare, "Earnings estimate comparison")
+plot(actualOn, "Earnings actual gaps_on", style=plot.style_circles)
+plot(earnings.future_eps, "Future EPS snapshot")
+plot(earnings.future_time, "Future time snapshot", display=display.data_window)
+plot(estimateFq, "EARNINGS_ESTIMATE FQ")
+plot(estimateFh, "EARNINGS_ESTIMATE FH")
+plot(estimateFy, "EARNINGS_ESTIMATE FY")
+plot(forwardFq, "PRICE_EARNINGS_FORWARD FQ")
+plot(forwardFy, "PRICE_EARNINGS_FORWARD FY")
+plot(close, "Chart close", display=display.data_window)
+
+number(float value) =>
+    na(value) ? "na" : str.tostring(value, "0.########")
+
+string row = str.format_time(time, "yyyy-MM-dd HH:mm", "UTC") + "|" + symbol + "|" + timeframe.period + "|" + syminfo.currency + "|" + comparisonCurrency
+row += "|" + number(close) + "|" + number(diluted) + "|" + number(basic) + "|" + number(dilutedQuote) + "|" + number(dilutedCompare) + "|" + number(dilutedEvent)
+row += "|" + number(estimateOn) + "|" + number(estimateOff) + "|" + number(estimateQuote) + "|" + number(estimateCompare) + "|" + number(actualOn)
+row += "|" + number(earnings.future_eps) + "|" + str.tostring(earnings.future_time)
+row += "|" + number(estimateFq) + "|" + number(estimateFh) + "|" + number(estimateFy) + "|" + number(forwardFq) + "|" + number(forwardFy)
+if time >= fromTime and not na(estimateOn[1])
+    log.info("BEFORE|" + row[2])
+    log.info("EVENT|" + row[1])
+    log.info("AFTER|" + row)
+if time >= fromTime and not na(dilutedEvent)
+    log.info("FINANCIAL|" + row)
+if barstate.islastconfirmedhistory
+    log.info("LAST|" + row)
