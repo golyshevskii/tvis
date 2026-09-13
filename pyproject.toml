@@ -1,0 +1,39 @@
+[project]
+name = "tvis"
+version = "0.1.0"
+requires-python = ">=3.13"
+dependencies = []
+
+[dependency-groups]
+lint = [
+    "ruff>=0.16.4",
+    "tooprolix>=0.5.5",
+]
+type = [
+    "ty>=0.0.73",
+]
+
+[tool.ruff]
+line-length = 120
+
+[tool.ruff.format]
+line-ending = "native"
+skip-magic-trailing-comma = true
+
+[tool.ruff.lint]
+extend-select = ["E", "I", "UP", "W", "RUF015", "RUF100"]
+ignore = ["E501"]
+
+[tool.ruff.lint.isort]
+split-on-trailing-comma = false
+
+[tool.tooprolix]
+comment-max-volume = 70
+docstring-max-volume = 350
+
+[tool.ty.terminal]
+error-on-warning = true
+
+[tool.ty.rules]
+possibly-unresolved-reference = "error"
+unused-ignore-comment = "warn"

@@ -1,6 +1,9 @@
 # Temporary files
 tmp/
 
+# Local validation inputs
+/reference/
+
 # Agents
 .agents/
 .claude/
