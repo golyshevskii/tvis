@@ -70,7 +70,10 @@ def extract_contract(source: str) -> str:
 
 
 def check_data_contract(source: str) -> None:
+    lines = source.splitlines()
     compact = " ".join(source.split())
+    mode_selection = 'fwdEPS = fwdMode == "Growth assumption" ? scenarioEPS : analystEPS'
+    forward_call = "fwdPE = showFwd ? peRatio(close, fwdEPS) : na"
     required = (
         "not na(price) and price > 0 and not na(eps) and eps > 0 ? price / eps : na",
         "not na(reportedQuarterEstimate) and reportedQuarterEstimate > 0 ? reportedQuarterEstimate * 4 : na",
@@ -78,8 +81,8 @@ def check_data_contract(source: str) -> None:
         f'if showFwd and fwdMode == "{ANALYST_MODE}" estQ := request.earnings(syminfo.tickerid, earnings.estimate, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true, currency=syminfo.currency)',
         "scenarioEPS = growthScenarioEPS(epsTTM, growthPct)",
         "analystEPS = analystProxyEPS(estQ)",
-        'fwdEPS = fwdMode == "Growth assumption" ? scenarioEPS : analystEPS',
-        "fwdPE = showFwd ? peRatio(close, fwdEPS) : na",
+        mode_selection,
+        forward_call,
         'plot(fwdPE, "Forward P/E"',
         'table.cell(t, 1, 2, showFwd ? (na(fwdPE) ? "n/a" : str.tostring(fwdPE, "#.##")) : "Off"',
     )
@@ -90,6 +93,14 @@ def check_data_contract(source: str) -> None:
         raise fail("request.financial must not receive lookahead")
     if compact.count("request.financial(") != 1 or compact.count("request.earnings(") != 1:
         raise fail("production must have exactly one financial and one earnings request")
+    if re.search(r"growthPct\s*=\s*input\.float\(.*?maxval\s*=\s*300\)\s*/", source, re.DOTALL):
+        raise fail("growthPct input must remain an unscaled percentage")
+    if lines.count(mode_selection) != 1:
+        raise fail("production must have exactly one forward mode selection")
+    if lines.count(forward_call) != 1:
+        raise fail("production must have exactly one Show Forward result assignment")
+    if any(re.match(r"^\s*fwdPE\s*:=", line) for line in lines[lines.index(forward_call) + 1 :]):
+        raise fail("production must not reassign fwdPE after the guarded result")
 
 
 def render_harness(source: str, source_hash: str) -> str:

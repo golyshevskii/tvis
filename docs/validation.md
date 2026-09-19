@@ -411,8 +411,11 @@ the generated harness SHA-256 is
 
 ### RED and GREEN
 
-Before the production edit, the new checker exited 1 because the TTM request
-did not include the explicit quote currency, `gaps_off`, or
+Applied unchanged to the baseline, the final checker first exited 1 on the
+missing positive-price guard:
+`ERROR: production data contract is missing: not na(price) and price > 0 ...`.
+Earlier in RED, a request-only intermediate guard separately exited 1 because
+the TTM request lacked the explicit quote currency, `gaps_off`, and
 `ignore_invalid_symbol=true`. The baseline chart also showed a runtime error
 for the old request on an unsupported crypto symbol. Existing positive-EPS
 arithmetic was already correct; the new fixtures preserve it rather than claim
@@ -424,10 +427,13 @@ negative denominators; na and zero price; EPS 0.000001; growth at 8%, -50%
 and 300%; and the reported-quarter estimate ×4 proxy. Its tolerance is
 `max(1e-8, 1e-10 * abs(expected))`.
 
-Three in-memory negative controls were passed to `check_data_contract` without
+Five in-memory negative controls were passed to `check_data_contract` without
 changing repository files. Replacing division with multiplication, allowing
 zero EPS, and replacing `earnings.estimate` with `earnings.actual` each raised
-`ERROR: production data contract is missing ...`.
+`ERROR: production data contract is missing ...`. Rescaling the `growthPct`
+input with `/ 100.0` raised `ERROR: growthPct input must remain an unscaled
+percentage`; inserting `fwdPE := 1.0` after the guarded assignment raised
+`ERROR: production must not reassign fwdPE after the guarded result`.
 
 ### TradingView execution
 
@@ -438,6 +444,36 @@ chart displayed trailing P/E 38.53 and forward P/E 44.42. The independently
 visible raw series were close 336.13, diluted TTM EPS 8.7233 and carried
 estimate 1.891883: `336.13 / 8.7233 = 38.532...` and
 `336.13 / (4 * 1.891883) = 44.417...`.
+
+The same production instance and restored probe were compared around the AAPL
+earnings event in Data Window on 2026-09-19. At the 2026-07-30 daily bar, before
+the event, raw close was 333.43, diluted TTM EPS was 8.7233, the event-only
+estimate was `na`, and the carried estimate was 1.945766. Production displayed
+trailing 38.22 and forward 42.84, matching `333.43 / 8.7233 = 38.222920...` and
+`333.43 / (4 * 1.945766) = 42.840455...`. At the 2026-07-31 event bar, raw close
+was 308.91, diluted TTM EPS was 8.7233, and both event-only and carried estimates
+were 1.891883. Production displayed trailing 35.41 and forward 40.82, matching
+`308.91 / 8.7233 = 35.412057...` and
+`308.91 / (4 * 1.891883) = 40.820442...`. This confirms the reported-quarter
+estimate changes on the mapped event without forward leakage before it.
+
+On `NYSE:SONY` (runtime `BATS:SONY`), 1D with dividend adjustment off, the
+2026-09-19 raw chart values were close 23.46, quote-currency diluted TTM EPS
+-0.2384, and carried quote-currency estimate 0.283148. The comparison-currency
+JPY values were -38.6036352 and 46.26383487 respectively. Production plot and
+table both showed trailing `n/a` and forward 20.71; the latter matches
+`23.46 / (4 * 0.283148) = 20.713549...`. This exercises explicit quote-currency
+requests while the chart comparison currency is JPY.
+
+`AMEX:SEB` (runtime `BATS:SEB`) supplied the positive-TTM/missing-estimate case.
+On 2026-09-19, 1D with dividend adjustment off, raw close was 4272.34, diluted
+TTM EPS was 661.8399, and every probed analyst estimate series was `na`. Analyst
+mode displayed trailing 6.46 and forward `n/a`. Switching only the forward mode
+to Growth assumption at 8% displayed trailing 6.46 and forward 5.98, matching
+`4272.34 / (661.8399 * 1.08) = 5.977081...`. No runtime error appeared, proving
+that Growth mode does not depend on analyst-request availability. As a candidate
+boundary check, `NASDAQ:CALM` had positive TTM EPS but an available analyst
+estimate of 0.0825, so it did not exercise the missing-estimate branch.
 
 The generated harness linked to the production SHA compiled and ran on the
 same chart at 09:48:25 +04. `Smoke result` displayed `1.0000` and no user runtime
