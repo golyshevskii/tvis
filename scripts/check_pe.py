@@ -116,19 +116,19 @@ def check_data_contract(source: str) -> None:
 
 
 def check_statistics_contract(source: str) -> None:
+    lines = [line.strip() for line in source.splitlines()]
     compact = " ".join(source.split())
     required = (
         "nextM2 += delta * (value - nextMean)",
-        "nextMean := mean - delta / nextCount",
-        "nextM2 := math.max(m2 - delta * (value - nextMean), 0.0)",
+        "leftM2 + rightM2 + delta * delta * leftCount * rightCount / count",
+        "while array.size(inValues) > 0",
+        "float transferred = statsStackPop(inValues, inCounts, inMeans, inM2s)",
+        "statsStackPush(outValues, outCounts, outMeans, outM2s, transferred)",
+        "statsStackPop(outValues, outCounts, outMeans, outM2s)",
         "count > 1 ? math.sqrt(math.max(m2 / count, 0.0)) : na",
         "not na(value) and not na(mean) and not na(sigma) and sigma > 0 ? (value - mean) / sigma : na",
         'na(z) ? "n/a" : z > 2 ? "Very rich" : z > 1 ? "Rich" : z < -2 ? "Very cheap" : z < -1 ? "Cheap" : "Normal"',
         'lookback = input.int(252, "Rolling lookback (bars)", minval=10, maxval=5000)',
-        "var array<float> rollingValues = array.new<float>(lookback, na)",
-        "float expiredPE = array.get(rollingValues, rollingIndex)",
-        "array.set(rollingValues, rollingIndex, pe)",
-        "rollingIndex := (rollingIndex + 1) % lookback",
         "float meanPE = statsMean(sampleCount, sampleMean)",
         "float sdPE = statsSigma(sampleCount, sampleM2)",
         "zscore = statsZ(pe, meanPE, sdPE)",
@@ -137,7 +137,19 @@ def check_statistics_contract(source: str) -> None:
     for statement in required:
         if statement not in compact:
             raise fail(f"production statistics contract is missing: {statement}")
-    forbidden = ("ta.sma(pe, lookback)", "ta.stdev(pe, lookback)", "s2 / n -", "varip")
+    production_wiring = (
+        "[nextAllCount, nextAllMean, nextAllM2] = statsAdd(allCount, allMean, allM2, pe)",
+        "[nextRollingBars, rollingCount, rollingMean, rollingM2] = statsQueueUpdate(rollingInValues, rollingInCounts, rollingInMeans, rollingInM2s, rollingOutValues, rollingOutCounts, rollingOutMeans, rollingOutM2s, rollingBars, lookback, pe)",
+        'bool allHistory = lbMode == "All history"',
+        "u1 = meanPE + sdPE",
+        "l1 = meanPE - sdPE",
+        "u2 = meanPE + 2 * sdPE",
+        "l2 = meanPE - 2 * sdPE",
+    )
+    for statement in production_wiring:
+        if lines.count(statement) != 1:
+            raise fail(f"production statistics wiring must contain exactly once: {statement}")
+    forbidden = ("ta.sma(pe, lookback)", "ta.stdev(pe, lookback)", "s2 / n -", "statsRemove(", "varip")
     for statement in forbidden:
         if statement in compact:
             raise fail(f"production statistics contract contains forbidden logic: {statement}")
@@ -169,20 +181,24 @@ summarize(array<float> values) =>
     [count, statsMean(count, mean), statsSigma(count, m2)]
 
 rollingSummary(array<float> values, int window) =>
-    array<float> buffer = array.new<float>(window, na)
-    int index = 0
+    array<float> inValues = array.new<float>()
+    array<int> inCounts = array.new<int>()
+    array<float> inMeans = array.new<float>()
+    array<float> inM2s = array.new<float>()
+    array<float> outValues = array.new<float>()
+    array<int> outCounts = array.new<int>()
+    array<float> outMeans = array.new<float>()
+    array<float> outM2s = array.new<float>()
+    int bars = 0
     int count = 0
     float mean = 0.0
     float m2 = 0.0
     for value in values
-        float expired = array.get(buffer, index)
-        [afterRemoveCount, afterRemoveMean, afterRemoveM2] = statsRemove(count, mean, m2, expired)
-        [nextCount, nextMean, nextM2] = statsAdd(afterRemoveCount, afterRemoveMean, afterRemoveM2, value)
+        [nextBars, nextCount, nextMean, nextM2] = statsQueueUpdate(inValues, inCounts, inMeans, inM2s, outValues, outCounts, outMeans, outM2s, bars, window, value)
+        bars := nextBars
         count := nextCount
         mean := nextMean
         m2 := nextM2
-        array.set(buffer, index, value)
-        index := (index + 1) % window
     [count, statsMean(count, mean), statsSigma(count, m2)]
 
 bool ratioFixtures = closeEnough(peRatio(100.0, 5.0), 20.0) and na(peRatio(float(na), 5.0)) and na(peRatio(0.0, 5.0)) and na(peRatio(100.0, float(na))) and na(peRatio(100.0, 0.0)) and na(peRatio(100.0, -5.0)) and closeEnough(peRatio(100.0, 0.000001), 100000000.0)
@@ -199,6 +215,8 @@ bool analystFixtures = closeEnough(analystProxyEPS(2.5), 10.0) and closeEnough(p
 [warmupCount, warmupMean, warmupSigma] = rollingSummary(array.from(float(na), 2.0, float(na), 4.0), 10)
 [rollingCount, rollingMean, rollingSigma] = rollingSummary(array.from(999.0, float(na), 2.0, float(na), 4.0, float(na), float(na), float(na), float(na), float(na), float(na)), 10)
 [longGapCount, longGapMean, longGapSigma] = rollingSummary(array.from(5.0, float(na), float(na), float(na), float(na), float(na), float(na), float(na), float(na), float(na), float(na)), 10)
+[largeRollingCount, largeRollingMean, largeRollingSigma] = rollingSummary(array.from(100000000.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0, 7.0), 10)
+[largeSparseCount, largeSparseMean, largeSparseSigma] = rollingSummary(array.from(100000000.0, float(na), 2.0, float(na), 4.0, float(na), float(na), float(na), float(na), float(na), float(na)), 10)
 
 float historyExpectedSigma = math.sqrt(200.0 / 3.0)
 bool emptyFixtures = emptyCount == 0 and na(emptyMean) and na(emptySigma)
@@ -211,9 +229,10 @@ bool transitionFixtures = transitionCount == 3 and closeEnough(transitionMean, 4
 bool largeFixtures = largeCount == 3 and closeEnough(largeMean, 100000001.0) and closeEnough(largeSigma * largeSigma, 2.0 / 3.0)
 bool warmupFixtures = warmupCount == 2 and closeEnough(warmupMean, 3.0) and closeEnough(warmupSigma, 1.0)
 bool rollingFixtures = rollingCount == 2 and closeEnough(rollingMean, 3.0) and closeEnough(rollingSigma, 1.0)
+bool largeRollingFixtures = largeRollingCount == 10 and closeEnough(largeRollingMean, 7.0) and closeEnough(largeRollingSigma, 0.0) and largeSparseCount == 2 and closeEnough(largeSparseMean, 3.0) and closeEnough(largeSparseSigma, 1.0)
 bool bandFixtures = closeEnough(historyMean + historySigma, 20.0 + historyExpectedSigma) and closeEnough(historyMean - historySigma, 20.0 - historyExpectedSigma) and closeEnough(historyMean + 2.0 * historySigma, 20.0 + 2.0 * historyExpectedSigma) and closeEnough(historyMean - 2.0 * historySigma, 20.0 - 2.0 * historyExpectedSigma)
-bool verdictFixtures = statsVerdict(2.0) == "Rich" and statsVerdict(2.000001) == "Very rich" and statsVerdict(1.0) == "Normal" and statsVerdict(1.000001) == "Rich" and statsVerdict(-1.0) == "Normal" and statsVerdict(-1.000001) == "Cheap" and statsVerdict(-2.0) == "Cheap" and statsVerdict(-2.000001) == "Very cheap"
-bool smokePass = ratioFixtures and growthFixtures and analystFixtures and emptyFixtures and oneFixtures and constantFixtures and historyFixtures and gapFixtures and longGapFixtures and transitionFixtures and largeFixtures and warmupFixtures and rollingFixtures and bandFixtures and verdictFixtures
+bool verdictFixtures = statsVerdict(2.0) == "Rich" and statsVerdict(2.000001) == "Very rich" and statsVerdict(1.999999) == "Rich" and statsVerdict(1.0) == "Normal" and statsVerdict(1.000001) == "Rich" and statsVerdict(0.999999) == "Normal" and statsVerdict(-0.999999) == "Normal" and statsVerdict(-1.0) == "Normal" and statsVerdict(-1.000001) == "Cheap" and statsVerdict(-1.999999) == "Cheap" and statsVerdict(-2.0) == "Cheap" and statsVerdict(-2.000001) == "Very cheap"
+bool smokePass = ratioFixtures and growthFixtures and analystFixtures and emptyFixtures and oneFixtures and constantFixtures and historyFixtures and gapFixtures and longGapFixtures and transitionFixtures and largeFixtures and warmupFixtures and rollingFixtures and largeRollingFixtures and bandFixtures and verdictFixtures
 if barstate.islast and not smokePass
     runtime.error("P/E contract smoke check failed")
 if barstate.islast

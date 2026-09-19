@@ -141,11 +141,14 @@ allowlist: other stocks may work, but they have not been certified here.
 All history uses Welford count/mean/M2 state: constant memory and O(1) work per
 bar. Its result depends on the bars TradingView loaded for the selected symbol,
 timeframe and chart history; it is not the issuer's lifetime statistic. Rolling
-uses a bounded circular buffer of at most the configured 10–5000 chart bars and
-the stable inverse/add forms of the same update. It has O(1) add/remove work per
-bar and O(N) bounded memory. An `na` value is written into its slot, so it ages
-out earlier values without entering the count, mean or M2. The default 252 is
-therefore 252 chart bars, not a universal calendar or trading year.
+uses a bounded two-stack queue for at most the configured 10–5000 chart bars.
+Each stack entry stores its Welford prefix aggregate, so eviction restores the
+previous aggregate without subtracting the expired value. Each slot is pushed,
+transferred once at most and popped once: work is O(1) amortized per bar, with
+an O(N) worst-case transfer when the output stack is empty, and memory is O(N).
+An `na` value occupies a queue slot but does not enter count, mean or M2. The
+default 252 is therefore 252 chart bars, not a universal calendar or trading
+year.
 
 The [ta.sma](https://www.tradingview.com/pine-script-reference/v6/#fun_ta.sma)
 Remarks say na is ignored; [ta.stdev](https://www.tradingview.com/pine-script-reference/v6/#fun_ta.stdev)
