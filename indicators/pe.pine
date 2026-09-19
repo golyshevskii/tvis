@@ -39,6 +39,47 @@ analystProxyEPS(float reportedQuarterEstimate) =>
     not na(reportedQuarterEstimate) and reportedQuarterEstimate > 0 ? reportedQuarterEstimate * 4 : na
 // @contract pe-ratio:end
 
+// @contract pe-statistics:start
+statsAdd(int count, float mean, float m2, float value) =>
+    int nextCount = count
+    float nextMean = mean
+    float nextM2 = m2
+    if not na(value)
+        nextCount += 1
+        float delta = value - nextMean
+        nextMean += delta / nextCount
+        nextM2 += delta * (value - nextMean)
+    [nextCount, nextMean, nextM2]
+
+statsRemove(int count, float mean, float m2, float value) =>
+    int nextCount = count
+    float nextMean = mean
+    float nextM2 = m2
+    if not na(value)
+        if count <= 1
+            nextCount := 0
+            nextMean := 0.0
+            nextM2 := 0.0
+        else
+            nextCount -= 1
+            float delta = value - mean
+            nextMean := mean - delta / nextCount
+            nextM2 := math.max(m2 - delta * (value - nextMean), 0.0)
+    [nextCount, nextMean, nextM2]
+
+statsMean(int count, float mean) =>
+    count > 0 ? mean : na
+
+statsSigma(int count, float m2) =>
+    count > 1 ? math.sqrt(math.max(m2 / count, 0.0)) : na
+
+statsZ(float value, float mean, float sigma) =>
+    not na(value) and not na(mean) and not na(sigma) and sigma > 0 ? (value - mean) / sigma : na
+
+statsVerdict(float z) =>
+    na(z) ? "n/a" : z > 2 ? "Very rich" : z > 1 ? "Rich" : z < -2 ? "Very cheap" : z < -1 ? "Cheap" : "Normal"
+// @contract pe-statistics:end
+
 // Inputs
 epsId     = input.string("EARNINGS_PER_SHARE_DILUTED", "Trailing EPS source",
              options=["EARNINGS_PER_SHARE_DILUTED", "EARNINGS_PER_SHARE_BASIC"])
@@ -49,7 +90,7 @@ growthPct = input.float(8.0, "Assumed annual EPS growth % (growth mode)",
              minval=-50, maxval=300)
 lbMode    = input.string("All history", "Average window",
              options=["All history", "Rolling lookback"])
-lookback  = input.int(252, "Rolling lookback (bars)", minval=10)
+lookback  = input.int(252, "Rolling lookback (bars)", minval=10, maxval=5000)
 showBands = input.bool(true, "Show ±1σ / ±2σ bands")
 showTable = input.bool(true, "Show info table")
 
@@ -69,23 +110,34 @@ fwdPE = showFwd ? peRatio(close, fwdEPS) : na
 plot(fwdPE, "Forward P/E", color=color.new(#FF6D00, 0), linewidth=2)
 
 // Historical mean & dispersion
-var float s1 = 0.0   // running sum of pe
-var float s2 = 0.0   // running sum of pe^2
-var int   n  = 0
+var int allCount = 0
+var float allMean = 0.0
+var float allM2 = 0.0
+[nextAllCount, nextAllMean, nextAllM2] = statsAdd(allCount, allMean, allM2, pe)
+allCount := nextAllCount
+allMean := nextAllMean
+allM2 := nextAllM2
 
-float meanPE = na
-float sdPE   = na
+var array<float> rollingValues = array.new<float>(lookback, na)
+var int rollingIndex = 0
+var int rollingCount = 0
+var float rollingMean = 0.0
+var float rollingM2 = 0.0
+float expiredPE = array.get(rollingValues, rollingIndex)
+[afterRemoveCount, afterRemoveMean, afterRemoveM2] = statsRemove(rollingCount, rollingMean, rollingM2, expiredPE)
+[nextRollingCount, nextRollingMean, nextRollingM2] = statsAdd(afterRemoveCount, afterRemoveMean, afterRemoveM2, pe)
+rollingCount := nextRollingCount
+rollingMean := nextRollingMean
+rollingM2 := nextRollingM2
+array.set(rollingValues, rollingIndex, pe)
+rollingIndex := (rollingIndex + 1) % lookback
 
-if lbMode == "All history"
-    if not na(pe)
-        s1 += pe
-        s2 += pe * pe
-        n  += 1
-    meanPE := n > 0 ? s1 / n : na
-    sdPE   := n > 1 ? math.sqrt(math.max(s2 / n - (s1 / n) * (s1 / n), 0)) : na
-else
-    meanPE := ta.sma(pe, lookback)
-    sdPE   := ta.stdev(pe, lookback)
+bool allHistory = lbMode == "All history"
+int sampleCount = allHistory ? allCount : rollingCount
+float sampleMean = allHistory ? allMean : rollingMean
+float sampleM2 = allHistory ? allM2 : rollingM2
+float meanPE = statsMean(sampleCount, sampleMean)
+float sdPE = statsSigma(sampleCount, sampleM2)
 
 plot(meanPE, "Mean P/E", color=color.new(color.gray, 0), linewidth=1)
 
@@ -120,10 +172,10 @@ txtSize = switch sizeInput
     "Large" => size.large
     => size.normal
 
-zscore = (not na(pe) and not na(meanPE) and not na(sdPE) and sdPE > 0) ? (pe - meanPE) / sdPE : na
+zscore = statsZ(pe, meanPE, sdPE)
 
 // Plain-English read of where current P/E sits vs its own history
-verdict = na(zscore) ? "n/a" : zscore > 2 ? "Very rich" : zscore > 1 ? "Rich" : zscore < -2 ? "Very cheap" : zscore < -1 ? "Cheap" : "Normal"
+verdict = statsVerdict(zscore)
 vColor  = na(zscore) ? color.gray : zscore > 1 ? color.red : zscore < -1 ? color.green : color.gray
 
 var table t = table.new(tablePos, 2, 6, border_width=1, frame_width=1,

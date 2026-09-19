@@ -496,3 +496,93 @@ analyst request is inside the enabled analyst-mode branch. The growth scenario
 is calculated only from TTM EPS and remains independent of analyst availability.
 Provider revisions, point-in-time history, chart currency overrides and
 unverified price-unit contexts retain the limits in the calculation contract.
+
+## History statistics correction — 2026-09-19
+
+Production SHA-256 is
+`91e5388fb2b53f2d67ffd4de4bbfca4578fbfcfb8becacf1f2d763df7acfd442`;
+the generated harness SHA-256 is
+`bfcf2b128f4c2c6b6d883ba64786376837ad4816a2e425d98def77533c91efd0`.
+The harness copies the marked statistics functions from that exact production
+source. Numeric comparisons use
+`abs(actual - expected) <= max(1e-8, 1e-10 * abs(expected))`; counts, `na`
+states and verdict strings are exact.
+
+### RED, independent expected values and GREEN
+
+The first Pine RED fixture put a `999` outlier immediately before the final ten
+chart bars `[na, 2, na, 4, na, na, na, na, na, na]`. On AAPL 1D, the former
+`ta.sma`/`ta.stdev` path stopped on bar 10 with
+`RED rolling: old built-ins do not implement the last 10 chart bars`. This is
+the expected failure because those built-ins seek non-na observations beyond
+the fixed chart-bar window. It ran at 10:11:13 +04; the fixture SHA-256 is
+`5f4852475fda2060ce9dc5f25950036e3d3e25faff0510aff14e17c2f4195787`.
+
+The separate large-value RED used `[100000000, 100000001, 100000002]` and the
+former `sum(x*x)/n - mean*mean` formula. Pine stopped on bar 0 with
+`RED stability: old moment subtraction returned 2`; the population variance is
+`2/3`. It ran at 10:12:02 +04; the fixture SHA-256 is
+`e9781501006f5bedf4e3f4315286646ac9b7a6fa268a0fa0fc656e3722cbe487`.
+
+Python's standard-library `statistics.pvariance`, independently of production,
+gave these reference values:
+
+```text
+history       count=3 mean=20.0        variance=66.66666666666667 sigma=8.16496580927726
+large         count=3 mean=100000001.0 variance=0.6666666666666666 sigma=0.816496580927726
+transition    count=3 mean=13.333333333333334 variance=22.22222222222222 sigma=4.714045207910317
+rolling_valid count=2 mean=3.0         variance=1.0 sigma=1.0
+```
+
+The GREEN harness covers empty and one-value histories, a constant series,
+internal/trailing `na`, a gap longer than the rolling window, a sharp 10→20
+transition, the large-value counterexample, rolling prefix warm-up ending on
+the current valid value, the exact fixed-window fixture,
+the same sigma for all four bands, current-value `na`, zero sigma, and verdicts
+at `-2`, `-1`, `1`, `2` plus `1e-6` on either side. It compiled and ran on
+AAPL 1D at 10:33:20 +04 with `Smoke result = 1.0000` and no user error.
+
+Four Pine mutations each changed the same generated harness and produced
+`RE10142: P/E contract smoke check failed`; restoring the generated source
+returned `Smoke result = 1.0000`:
+
+- replacing Welford's M2 update with accumulation of `value*value`;
+- dividing M2 by 10 instead of the valid sample count;
+- passing `na` to removal so an expired value stayed in the rolling state;
+- rounding z before the strict verdict comparisons.
+
+### Production matrix and reload
+
+The exact production source compiled without diagnostics at 10:16:50 +04.
+All observations used BATS:AAPL, dividend adjustment off, diluted TTM EPS,
+the reported-quarter estimate proxy, lookback 252 and the last displayed bar
+ending 2026-09-18. The values below are mean, +1σ, -1σ, +2σ and -2σ; trailing
+P/E was 38.53 and proxy P/E 44.42 throughout.
+
+| Timeframe | All history | Rolling 252 |
+|---|---|---|
+| 1D | 28.55, 35.22, 21.87, 41.90, 15.19 | 35.08, 37.19, 32.96, 39.31, 30.85 |
+| 1W | 28.52, 35.20, 21.84, 41.88, 15.16 | 31.03, 35.68, 26.38, 40.33, 21.73 |
+| 1M | 28.44, 35.14, 21.75, 41.83, 15.05 | 28.44, 35.14, 21.75, 41.83, 15.05 |
+
+The monthly results match because the available prefix contains fewer than 252
+valid monthly observations. Rolling 5000 also compiled and ran without an
+error; it matched All history on the loaded AAPL dataset, validating the input
+ceiling without claiming 5000 loaded observations.
+
+After saving the chart state, a normal page reload reproduced the 1D All
+history tuple exactly. A separate saved reload reproduced the Rolling 252 tuple
+exactly. The implementation has constant All-history state and a rolling array
+bounded by the configured 10–5000 chart bars; neither grows with elapsed bars.
+Both paths do O(1) work per bar and use no `varip`.
+
+The market banner reported `Рынок закрыт` for the validated EPS equity AAPL.
+The other validated EPS equities (GOOG, SONY and SEB) trade on equity venues
+that were also closed during this weekend session. Crypto was not substituted
+because its financial/EPS data is unsupported. Consequently an open-bar tick,
+bar close and subsequent reload were **not verified**; the historical reload
+above does not replace that live criterion.
+
+`make check`, `make test` and `git diff --check` exited 0. The local commands
+verify source integrity and regenerate the harness; Pine compilation and runtime
+are the separate chart observations recorded above.
