@@ -6,7 +6,7 @@
 //
 // tvis: P/E History & Forward Estimate
 //  - Trailing P/E:  close / TTM EPS            (real, from request.financial)
-//  - Forward P/E:   close / estimated EPS      (APPROXIMATE - see notes below)
+//  - Forward P/E:   close / proxy EPS          (APPROXIMATE - see notes below)
 //  - Historical context: running mean + 1σ/2σ bands + live z-score
 //
 //  NOTES / LIMITATIONS:
@@ -14,30 +14,39 @@
 //     Indices, forex, and crypto will show n/a.
 //   * Forward P/E is a PROXY. TradingView does not expose a true forward
 //     12-month consensus EPS to Pine. Two proxy methods are offered:
-//        - "Analyst estimate (x4)": next-quarter analyst EPS estimate, crudely
-//          annualized. Ignores seasonality. Closest to a "real" estimate.
+//        - "Reported-quarter estimate ×4 (proxy)": the latest estimate attached
+//          to a reported quarter, annualized. It is not an NTM forecast.
 //        - "Growth assumption":     trailing TTM EPS grown by an assumed rate.
 //   * Fundamental history on TradingView is limited (often a handful of years),
 //     so the "all history" mean only spans the available EPS data.
-//   * If "EARNINGS_PER_SHARE_DILUTED" throws an error on a ticker, switch the
-//     EPS source input to "EARNINGS_PER_SHARE_BASIC".
-// ============================================================================
+//   * Unsupported symbols and unavailable data produce n/a.
+//   * Verified on regular-session daily/weekly bars with dividend adjustment off,
+//     native quote currency, and ordinary share/unit prices. Chart currency
+//     overrides, minor-unit quotes, synthetic charts, extended sessions, and
+//     other timeframes are unverified.
 
 indicator("tvis: P/E History & Forward Estimate", precision=2)
 
 // @contract pe-ratio:start
 peRatio(float price, float eps) =>
-    not na(eps) and eps > 0 ? price / eps : na
+    not na(price) and price > 0 and not na(eps) and eps > 0 ? price / eps : na
+
+growthScenarioEPS(float eps, float growthPercent) =>
+    float scenario = not na(eps) and eps > 0 ? eps * (1 + growthPercent / 100) : na
+    not na(scenario) and scenario > 0 ? scenario : na
+
+analystProxyEPS(float reportedQuarterEstimate) =>
+    not na(reportedQuarterEstimate) and reportedQuarterEstimate > 0 ? reportedQuarterEstimate * 4 : na
 // @contract pe-ratio:end
 
 // Inputs
 epsId     = input.string("EARNINGS_PER_SHARE_DILUTED", "Trailing EPS source",
              options=["EARNINGS_PER_SHARE_DILUTED", "EARNINGS_PER_SHARE_BASIC"])
 showFwd   = input.bool(true, "Show Forward P/E")
-fwdMode   = input.string("Analyst estimate (x4)", "Forward EPS method",
-             options=["Analyst estimate (x4)", "Growth assumption"])
+fwdMode   = input.string("Reported-quarter estimate ×4 (proxy)", "Forward EPS method",
+             options=["Reported-quarter estimate ×4 (proxy)", "Growth assumption"])
 growthPct = input.float(8.0, "Assumed annual EPS growth % (growth mode)",
-             minval=-50, maxval=300) / 100.0
+             minval=-50, maxval=300)
 lbMode    = input.string("All history", "Average window",
              options=["All history", "Rolling lookback"])
 lookback  = input.int(252, "Rolling lookback (bars)", minval=10)
@@ -45,16 +54,18 @@ showBands = input.bool(true, "Show ±1σ / ±2σ bands")
 showTable = input.bool(true, "Show info table")
 
 // Trailing P/E
-epsTTM = request.financial(syminfo.tickerid, epsId, "TTM")
+epsTTM = request.financial(syminfo.tickerid, epsId, "TTM", gaps=barmerge.gaps_off, ignore_invalid_symbol=true, currency=syminfo.currency)
 pe = peRatio(close, epsTTM)
 plot(pe, "Trailing P/E", color=color.new(#2962FF, 0), linewidth=2)
 
 // Forward P/E (proxy)
-estQ = request.earnings(syminfo.tickerid, earnings.estimate, gaps=barmerge.gaps_off)
-float fwdEPS = fwdMode == "Growth assumption"
-     ? (na(epsTTM) ? na : epsTTM * (1 + growthPct))
-     : (na(estQ)   ? na : estQ * 4)
-fwdPE = (showFwd and not na(fwdEPS) and fwdEPS > 0) ? close / fwdEPS : na
+float estQ = na
+if showFwd and fwdMode == "Reported-quarter estimate ×4 (proxy)"
+    estQ := request.earnings(syminfo.tickerid, earnings.estimate, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true, currency=syminfo.currency)
+scenarioEPS = growthScenarioEPS(epsTTM, growthPct)
+analystEPS = analystProxyEPS(estQ)
+fwdEPS = fwdMode == "Growth assumption" ? scenarioEPS : analystEPS
+fwdPE = showFwd ? peRatio(close, fwdEPS) : na
 plot(fwdPE, "Forward P/E", color=color.new(#FF6D00, 0), linewidth=2)
 
 // Historical mean & dispersion
@@ -125,7 +136,7 @@ if showTable and barstate.islast
     table.cell(t, 0, 1, "Trailing P/E", text_color=color.gray, bgcolor=rowBg, text_size=txtSize)
     table.cell(t, 1, 1, na(pe) ? "n/a" : str.tostring(pe, "#.##"), text_color=#2962FF, bgcolor=rowBg, text_size=txtSize)
     table.cell(t, 0, 2, "Forward P/E", text_color=color.gray, bgcolor=rowBg, text_size=txtSize)
-    table.cell(t, 1, 2, na(fwdPE) ? "n/a" : str.tostring(fwdPE, "#.##"), text_color=#FF6D00, bgcolor=rowBg, text_size=txtSize)
+    table.cell(t, 1, 2, showFwd ? (na(fwdPE) ? "n/a" : str.tostring(fwdPE, "#.##")) : "Off", text_color=#FF6D00, bgcolor=rowBg, text_size=txtSize)
     table.cell(t, 0, 3, "Mean P/E", text_color=color.gray, bgcolor=rowBg, text_size=txtSize)
     table.cell(t, 1, 3, na(meanPE) ? "n/a" : str.tostring(meanPE, "#.##"), text_color=color.gray, bgcolor=rowBg, text_size=txtSize)
     table.cell(t, 0, 4, "Z-score", text_color=color.gray, bgcolor=rowBg, text_size=txtSize)

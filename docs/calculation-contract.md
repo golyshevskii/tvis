@@ -1,7 +1,8 @@
 # P/E calculation contract
 
-Decision record, 2026-09-13. This specifies the next implementation; it does
-not claim that `indicators/pe.pine` already implements these decisions.
+Decision record, 2026-09-13. The data-source and ratio sections were
+implemented 2026-09-19 in `indicators/pe.pine`; the history and statistics
+section remains the contract for the next task.
 The measurements and exact probe source hash are in [validation](validation.md#financial-data-probe--2026-09-13).
 
 ## Sources and evidence
@@ -34,7 +35,7 @@ conversion uses the previous daily FX rate of the corresponding pair. The
 probe observed conversions attached to the requested fiscal/event values,
 not a freshly repriced EPS on every chart day.
 
-| Source | Period / horizon | Units / currency | Appearance | History / limitations | Next implementation |
+| Source | Period / horizon | Units / currency | Appearance | History / limitations | Implementation |
 |---|---|---|---|---|---|
 | `request.financial`, `EARNINGS_PER_SHARE_DILUTED`, TTM | Provider trailing twelve months; diluted | Quote currency per listed share/unit; probe default equals explicit USD | Fiscal-period mapping; GOOG/AAPL values changed on 2026-03-31 and 06-30, before earnings-event bars | Historical revised fundamentals, not proof of what was known on that date | Default trailing EPS |
 | `request.financial`, `EARNINGS_PER_SHARE_BASIC`, TTM | Same period, basic definition | Same units | Same measured periods | Different numerical series; GOOG 19.9053 diluted versus 20.1464 basic on 09-11 | Keep explicit user choice; no automatic fallback |
@@ -97,18 +98,18 @@ The measured reporting/quote mismatch is SONY: issuer reporting in JPY,
 US listing quoted in USD. Default requests equalled explicit USD; JPY
 requests returned different values. Thus the original omission of `currency`
 is **not** evidence that it divided a USD price by unconverted JPY EPS.
-The explicit quote argument in the new implementation states the contract.
+The explicit quote argument in production states the contract.
 ADR conversion/split policy is supplied by the provider; this probe does
 not certify arbitrary ADR ratios or corporate-action histories.
 
 Currency overrides on the chart, minor-unit quotes (e.g. GBX), synthetic
 charts, extended sessions and other timeframes remain outside the verified
-matrix. Do not claim support or infer a pence/pounds scale factor. The next
-implementation must explain these restrictions; extending them requires
+matrix. Do not claim support or infer a pence/pounds scale factor. Production
+comments explain these restrictions; extending them requires
 a new units/price-context probe. The working matrix is not a ticker
 allowlist: other stocks may work, but they have not been certified here.
 
-## History and statistics: decisions for the new version
+## History and statistics: decisions for the statistics task
 
 - Statistics use valid **trailing P/E only**, including the current bar.
   All history starts at the first loaded bar and includes each valid bar

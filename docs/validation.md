@@ -401,3 +401,62 @@ actual Pine compile/runtime evidence is the chart session recorded above.
 the generated smoke harness stayed
 `d64bc8e77cd467b805bed953bf4eec83545252123205711f734000e5a8c32726`.
 No Makefile or production change was needed for this diagnostic task.
+
+## P/E data and ratio correction — 2026-09-19
+
+Production SHA-256 is
+`f7a623b32d560412a48f480d9a5a44616f329ee8955df7df051e5fe0d8895d25`;
+the generated harness SHA-256 is
+`b6d0abf14491f4bd2c0557d28bd39e5935c8f11f36c7f7db0cfbc7ac60c7899d`.
+
+### RED and GREEN
+
+Before the production edit, the new checker exited 1 because the TTM request
+did not include the explicit quote currency, `gaps_off`, or
+`ignore_invalid_symbol=true`. The baseline chart also showed a runtime error
+for the old request on an unsupported crypto symbol. Existing positive-EPS
+arithmetic was already correct; the new fixtures preserve it rather than claim
+a false RED.
+
+After the edit, `make check`, `make test`, and `git diff --check` exited 0.
+The generated Pine harness covers price 100 / EPS 5 = 20; na, zero and
+negative denominators; na and zero price; EPS 0.000001; growth at 8%, -50%
+and 300%; and the reported-quarter estimate ×4 proxy. Its tolerance is
+`max(1e-8, 1e-10 * abs(expected))`.
+
+Three in-memory negative controls were passed to `check_data_contract` without
+changing repository files. Replacing division with multiplication, allowing
+zero EPS, and replacing `earnings.estimate` with `earnings.actual` each raised
+`ERROR: production data contract is missing ...`.
+
+### TradingView execution
+
+The exact production source was compiled in the saved scratch script on
+`BATS:AAPL`, 1D, dividend adjustment off, at 09:48:17 +04. No compiler or runtime
+diagnostic appeared. With diluted TTM EPS and the analyst proxy selected, the
+chart displayed trailing P/E 38.53 and forward P/E 44.42. The independently
+visible raw series were close 336.13, diluted TTM EPS 8.7233 and carried
+estimate 1.891883: `336.13 / 8.7233 = 38.532...` and
+`336.13 / (4 * 1.891883) = 44.417...`.
+
+The generated harness linked to the production SHA compiled and ran on the
+same chart at 09:48:25 +04. `Smoke result` displayed `1.0000` and no user runtime
+error appeared. On unsupported `BITSTAMP:BTCEURC`, the corrected instance
+continued with no ratio values and no error control attached to it; the
+unchanged baseline instance separately retained its expected runtime-error
+control. This distinguishes the new request boundary from the old failure.
+
+The saved `tvis: EPS Data Probe` was used only as a temporary runtime slot
+because the Basic plan rejected another indicator. Its repository source was
+restored and saved afterwards; Select All → Copy matched the repository text
+after normalizing the editor's CRLF line endings. Its SHA-256 remains
+`aa0c5bda3b156428fe3c3aca058bd964fb71fe82b4c6c9ef72b8246fe80401ce`.
+The restored probe compiled and its AAPL event logs resumed without a runtime
+diagnostic.
+
+`Show Forward P/E` now gates the single `fwdPE` result used by both plot and
+table; when disabled, the plot receives na and the table says `Off`. The
+analyst request is inside the enabled analyst-mode branch. The growth scenario
+is calculated only from TTM EPS and remains independent of analyst availability.
+Provider revisions, point-in-time history, chart currency overrides and
+unverified price-unit contexts retain the limits in the calculation contract.
