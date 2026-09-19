@@ -16,6 +16,7 @@ LICENSE_PATH = Path("LICENSE")
 HARNESS_PATH = Path("tmp/pe-contract-tests.pine")
 START_MARKER = "// @contract pe-ratio:start"
 END_MARKER = "// @contract pe-ratio:end"
+ANALYST_MODE = "Reported-quarter estimate ×4 (proxy)"
 LICENSE_HEADER = (
     "// This Pine Script® code is subject to the terms of the Mozilla Public License 2.0 "
     "at https://mozilla.org/MPL/2.0/\n// © golyshevskii\n"
@@ -68,6 +69,40 @@ def extract_contract(source: str) -> str:
     return block
 
 
+def check_data_contract(source: str) -> None:
+    lines = source.splitlines()
+    compact = " ".join(source.split())
+    mode_selection = 'fwdEPS = fwdMode == "Growth assumption" ? scenarioEPS : analystEPS'
+    forward_call = "fwdPE = showFwd ? peRatio(close, fwdEPS) : na"
+    required = (
+        "not na(price) and price > 0 and not na(eps) and eps > 0 ? price / eps : na",
+        "not na(reportedQuarterEstimate) and reportedQuarterEstimate > 0 ? reportedQuarterEstimate * 4 : na",
+        'epsTTM = request.financial(syminfo.tickerid, epsId, "TTM", gaps=barmerge.gaps_off, ignore_invalid_symbol=true, currency=syminfo.currency)',
+        f'if showFwd and fwdMode == "{ANALYST_MODE}" estQ := request.earnings(syminfo.tickerid, earnings.estimate, gaps=barmerge.gaps_off, lookahead=barmerge.lookahead_off, ignore_invalid_symbol=true, currency=syminfo.currency)',
+        "scenarioEPS = growthScenarioEPS(epsTTM, growthPct)",
+        "analystEPS = analystProxyEPS(estQ)",
+        mode_selection,
+        forward_call,
+        'plot(fwdPE, "Forward P/E"',
+        'table.cell(t, 1, 2, showFwd ? (na(fwdPE) ? "n/a" : str.tostring(fwdPE, "#.##")) : "Off"',
+    )
+    for statement in required:
+        if statement not in compact:
+            raise fail(f"production data contract is missing: {statement}")
+    if "lookahead=" in compact.split("request.financial", maxsplit=1)[1].split(")", maxsplit=1)[0]:
+        raise fail("request.financial must not receive lookahead")
+    if compact.count("request.financial(") != 1 or compact.count("request.earnings(") != 1:
+        raise fail("production must have exactly one financial and one earnings request")
+    if re.search(r"growthPct\s*=\s*input\.float\(.*?maxval\s*=\s*300\)\s*/", source, re.DOTALL):
+        raise fail("growthPct input must remain an unscaled percentage")
+    if lines.count(mode_selection) != 1:
+        raise fail("production must have exactly one forward mode selection")
+    if lines.count(forward_call) != 1:
+        raise fail("production must have exactly one Show Forward result assignment")
+    if any(re.match(r"^\s*fwdPE\s*:=", line) for line in lines[lines.index(forward_call) + 1 :]):
+        raise fail("production must not reassign fwdPE after the guarded result")
+
+
 def render_harness(source: str, source_hash: str) -> str:
     contract = extract_contract(source)
     return f"""{LICENSE_HEADER}
@@ -77,7 +112,13 @@ def render_harness(source: str, source_hash: str) -> str:
 indicator("P/E contract smoke")
 
 {contract}
-bool smokePass = peRatio(10.0, 2.0) == 5.0 and na(peRatio(10.0, 0.0)) and na(peRatio(10.0, float(na)))
+closeEnough(float actual, float expected) =>
+    not na(actual) and math.abs(actual - expected) <= math.max(1e-8, 1e-10 * math.abs(expected))
+
+bool ratioFixtures = closeEnough(peRatio(100.0, 5.0), 20.0) and na(peRatio(float(na), 5.0)) and na(peRatio(0.0, 5.0)) and na(peRatio(100.0, float(na))) and na(peRatio(100.0, 0.0)) and na(peRatio(100.0, -5.0)) and closeEnough(peRatio(100.0, 0.000001), 100000000.0)
+bool growthFixtures = closeEnough(growthScenarioEPS(5.0, 8.0), 5.4) and closeEnough(peRatio(100.0, growthScenarioEPS(5.0, 8.0)), 100.0 / 5.4) and closeEnough(growthScenarioEPS(5.0, -50.0), 2.5) and closeEnough(growthScenarioEPS(5.0, 300.0), 20.0) and na(growthScenarioEPS(float(na), 8.0)) and na(growthScenarioEPS(0.0, 8.0)) and na(growthScenarioEPS(-5.0, 8.0))
+bool analystFixtures = closeEnough(analystProxyEPS(2.5), 10.0) and closeEnough(peRatio(100.0, analystProxyEPS(2.5)), 10.0) and na(analystProxyEPS(float(na))) and na(analystProxyEPS(0.0)) and na(analystProxyEPS(-2.5))
+bool smokePass = ratioFixtures and growthFixtures and analystFixtures
 if barstate.islast and not smokePass
     runtime.error("peRatio smoke check failed")
 plot(smokePass ? 1 : 0, "Smoke result")
@@ -101,6 +142,7 @@ def check(check_harness: bool = True) -> tuple[str, str]:
     if not production.startswith(LICENSE_HEADER):
         raise fail("production MPL-2.0/golyshevskii header changed")
     extract_contract(production)
+    check_data_contract(production)
     required_file(README_PATH)
     required_file(VALIDATION_PATH)
     required_file(LICENSE_PATH)
