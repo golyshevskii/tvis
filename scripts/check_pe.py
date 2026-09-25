@@ -95,8 +95,10 @@ def check_data_contract(source: str) -> None:
         "analystEPS = analystProxyEPS(estQ)",
         mode_selection,
         forward_call,
-        'plot(fwdPE, "Forward P/E"',
-        'table.cell(t, 1, 2, showFwd ? (na(fwdPE) ? "n/a" : str.tostring(fwdPE, "#.##")) : "Off"',
+        'plot(pe, "Trailing P/E (TTM EPS)", color=TRAILING_COLOR, linewidth=2, style=plot.style_linebr)',
+        'plot(fwdMode == ANALYST_MODE ? fwdPE : na, "Reported-quarter EPS ×4 proxy P/E", color=FORWARD_COLOR, linewidth=2, style=plot.style_linebr)',
+        'plot(fwdMode == GROWTH_MODE ? fwdPE : na, "TTM EPS growth scenario P/E", color=FORWARD_COLOR, linewidth=2, style=plot.style_linebr)',
+        'string forwardValue = not showFwd ? "Off" : na(fwdPE) ? "Unavailable" : str.tostring(fwdPE, "#.##")',
     )
     for statement in required:
         if statement not in compact:
@@ -131,8 +133,13 @@ def check_statistics_contract(source: str) -> None:
         'lookback = input.int(252, "Rolling lookback (bars)", minval=10, maxval=5000)',
         "float meanPE = statsMean(sampleCount, sampleMean)",
         "float sdPE = statsSigma(sampleCount, sampleM2)",
+        "float visibleMeanPE = not na(pe) ? meanPE : na",
+        'plot(visibleMeanPE, "Mean trailing P/E", color=chart.fg_color, linewidth=1, style=plot.style_linebr)',
+        'na(visibleMeanPE) ? "n/a" : str.tostring(visibleMeanPE, "#.##")',
+        'fill(pu1, pl1, color=color.new(chart.fg_color, 90), title="±1σ zone", fillgaps=false)',
         "zscore = statsZ(pe, meanPE, sdPE)",
         "verdict = statsVerdict(zscore)",
+        "zStatus = displayZStatus(pe, sampleCount, sdPE, zscore)",
     )
     for statement in required:
         if statement not in compact:
@@ -232,7 +239,8 @@ bool rollingFixtures = rollingCount == 2 and closeEnough(rollingMean, 3.0) and c
 bool largeRollingFixtures = largeRollingCount == 10 and closeEnough(largeRollingMean, 7.0) and closeEnough(largeRollingSigma, 0.0) and largeSparseCount == 2 and closeEnough(largeSparseMean, 3.0) and closeEnough(largeSparseSigma, 1.0)
 bool bandFixtures = closeEnough(historyMean + historySigma, 20.0 + historyExpectedSigma) and closeEnough(historyMean - historySigma, 20.0 - historyExpectedSigma) and closeEnough(historyMean + 2.0 * historySigma, 20.0 + 2.0 * historyExpectedSigma) and closeEnough(historyMean - 2.0 * historySigma, 20.0 - 2.0 * historyExpectedSigma)
 bool verdictFixtures = statsVerdict(2.0) == "Rich" and statsVerdict(2.000001) == "Very rich" and statsVerdict(1.999999) == "Rich" and statsVerdict(1.0) == "Normal" and statsVerdict(1.000001) == "Rich" and statsVerdict(0.999999) == "Normal" and statsVerdict(-0.999999) == "Normal" and statsVerdict(-1.0) == "Normal" and statsVerdict(-1.000001) == "Cheap" and statsVerdict(-1.999999) == "Cheap" and statsVerdict(-2.0) == "Cheap" and statsVerdict(-2.000001) == "Very cheap"
-bool smokePass = ratioFixtures and growthFixtures and analystFixtures and emptyFixtures and oneFixtures and constantFixtures and historyFixtures and gapFixtures and longGapFixtures and transitionFixtures and largeFixtures and warmupFixtures and rollingFixtures and largeRollingFixtures and bandFixtures and verdictFixtures
+bool statusFixtures = displayZStatus(float(na), 3, 1.0, float(na)) == "Missing P/E" and displayZStatus(5.0, 1, float(na), float(na)) == "Need ≥2" and displayZStatus(7.0, 3, float(na), float(na)) == "Undefined" and displayZStatus(7.0, 3, 0.0, float(na)) == "σ=0" and displayZStatus(20.0, 3, 1.0, 1.25) == "1.25 sd"
+bool smokePass = ratioFixtures and growthFixtures and analystFixtures and emptyFixtures and oneFixtures and constantFixtures and historyFixtures and gapFixtures and longGapFixtures and transitionFixtures and largeFixtures and warmupFixtures and rollingFixtures and largeRollingFixtures and bandFixtures and verdictFixtures and statusFixtures
 if barstate.islast and not smokePass
     runtime.error("P/E contract smoke check failed")
 if barstate.islast

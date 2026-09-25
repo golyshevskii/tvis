@@ -674,3 +674,107 @@ identity. Afterward the scratch script was restored to the exact repository
 `aa0c5bda3b156428fe3c3aca058bd964fb71fe82b4c6c9ef72b8246fe80401ce`), the
 chart was returned to 1D with Data Window closed, and the restored layout was
 saved.
+
+## P/E presentation and Pine style — 2026-09-25
+
+The baseline test chart was AAPL 1D in dark theme with the original indicator
+and the EPS data probe. The indicator exposed a generic `Forward P/E` plot and
+row, fixed white header text, and no distinction between disabled and missing
+outputs beyond `Off`/`n/a`. After editing, the Pine Editor's copied text matched
+`indicators/pe.pine` byte for byte; its SHA-256 was
+`8e3004a046d995fd88810adf4c1ffb4e4c83d0b74f249fa55b65bed97ad68482`.
+TradingView compiled that exact source without a visible compiler error or
+warning and showed no runtime error on the test charts.
+
+On the live AAPL 1D bar at about 11:08 UTC-4, Data Window and the table both
+showed trailing P/E 38.72, the reported-quarter ×4 proxy 44.64, and mean
+28.57. The Data Window bands were +1σ 35.26, -1σ 21.88, +2σ 41.95 and -2σ
+15.20; the growth scenario plot was empty. Selecting the growth method instead
+showed its separate `TTM EPS growth scenario P/E` plot at about 35.83 and
+emptied the proxy plot. These live prices changed during inspection, so the
+two mode values are observations of different ticks, not a same-tick ratio
+comparison.
+
+Turning forward off emptied both forward plots and displayed `Off` in the
+table. Turning bands off removed all four band plots and their fill; turning
+the table off cleared it. Each output reappeared when re-enabled. The five
+positions were checked as Top right/Normal, Top left/Tiny, Bottom right/Small,
+Bottom left/Large and Middle right/Normal, covering every position and size.
+All six rows were visible in a sufficiently tall pane; the large table can
+be clipped by a short pane. Table text remained legible on dark and light
+chart themes after recalculation, using the theme foreground and background.
+
+The real NYSE:SONY 1D chart had an invalid trailing-P/E stretch through the
+current bar around 11:15 UTC-4. Its Data Window showed trailing P/E, mean and
+all four bands empty while the proxy remained 20.68. The table showed
+`Missing P/E`, proxy 20.68, mean `n/a`, Z-score and Position `Missing P/E`,
+and `All; n=1823`. The trailing/mean lines and ±1σ fill ended before that
+invalid stretch; the forward proxy remained plotted. This verifies the
+missing-current-bar gap and table/Data Window agreement. The observed real
+stretch was at the end of the history, so an interior gap was checked with
+the separate fixture below.
+
+On AAPL 1D, a temporary visual fixture set bars 40–0 from the latest bar to
+valid P/E except offsets 12–18, which were seven consecutive `na` bars. It
+used the production parameters `plot.style_linebr` for the P/E and ±1σ plots
+and `fillgaps=false` for the ±1σ fill. The Pine Editor compiled it without a
+visible error. At about 11:36 UTC-4, the full-width chart visibly showed two
+separate blue P/E line and shaded-band segments, with an empty interval
+between valid segments. Fixture SHA-256 was
+`c7423595f9b0db5e9ba4aaaa1cc3989d7b7807e5d5003fb2b3ba87098b80fee8`
+(`/tmp/tvis-task5/interior-gap-fixture.pine`, temporary and outside the repo).
+For a visual RED control, changing each plot to `plot.style_line` and the fill
+to `fillgaps=true` (SHA-256
+`0de6119175b00eb474b75dcb89ea8b2d3071e8c9ca48a19798964e038a89968c`)
+compiled and visibly bridged that same interval with a continuous blue line
+and shaded band. No screenshot file was saved; these are direct UI observations.
+
+The new status branch was tested through the generated Pine harness. Before
+implementation, the `visibleMeanPE` presentation guard failed. After
+implementation, changing `count < 2` to `count < 1` in the production-linked
+status function produced runtime error `RE10142` at bar 14122 in the exact
+mutant harness (SHA-256
+`53e33680cdc85ca2412d7a8615f6cd4555fbe2cd66571974cbc06fd0255f62ca`).
+Restoring the source-linked harness removed the runtime error and displayed
+`Smoke result = 1.0000` on SONY 1D. The editor was then restored to
+`tests/pine/data-probe.pine`, which compiled without a runtime error. After
+the visual fixture, the EPS Data Probe editor text again matched the
+repository source after normalizing Chrome's clipboard CRLF line endings;
+the repository SHA-256 is
+`aa0c5bda3b156428fe3c3aca058bd964fb71fe82b4c6c9ef72b8246fe80401ce`.
+It compiled again and its original plots and values returned. The chart
+returned to AAPL 1D, dark theme, its two original indicators, closed Data
+Window/editor and approximately original pane heights. The restored layout
+was saved (`All changes saved`). TradingView's theme switch changed
+the chart background from its original navy to default black and broadened
+the visible date range; the original exact settings were not available to
+restore without guessing.
+
+### Undefined-sigma status follow-up — 2026-09-25
+
+An additional status fixture requires `displayZStatus(7.0, 3, na, na)` to
+return `Undefined`; `σ=0` is reserved for a finite, exactly zero sigma. With
+the earlier production function, the exact generated harness (SHA-256
+`d3b515b3c4b3d9b0a14d8859533e70e0095a9da7f961740c063a26a05f7f9120`,
+production SHA-256
+`8e3004a046d995fd88810adf4c1ffb4e4c83d0b74f249fa55b65bed97ad68482`)
+compiled on AAPL 1D but produced runtime error `RE10142`. This was the
+expected RED: the old function incorrectly returned `σ=0` for an unavailable
+sigma with three samples and valid current P/E.
+
+After separating `na(sigma)` from `sigma == 0`, the exact source-linked
+harness (SHA-256
+`f09687db988a8fafb57532b60bd3df353c298efac4537ccbc96f5386b5adeaa4`)
+compiled on AAPL 1D and displayed `Smoke result = 1.0000` without a runtime
+error. The Pine Editor text was compared to each generated harness before
+execution. The exact final `indicators/pe.pine` text was also compared to the
+editor, then compiled on AAPL 1D without a visible compiler warning or
+runtime error. Its final SHA-256 is
+`c64f2d37636c217c96687f12885ab740380f60352d055bad354abb102986f5f0`.
+Around 11:58 UTC-4, its Data Window showed trailing P/E 38.89, reported-Q ×4
+proxy 44.83, mean 28.57, and bands 35.26, 21.88, 41.95 and 15.20; the table
+showed the same trailing, proxy and mean values. The editor was then restored
+to the exact repository Data Probe text after line-ending normalization; it
+compiled, its original values returned, and the layout reported all changes
+saved. The previously documented navy background and visible-range difference
+remained.

@@ -124,8 +124,9 @@ allowlist: other stocks may work, but they have not been certified here.
   `sum((x - mean)^2) / n`, sigma its square root. Use a numerically stable
   implementation; do not derive small variance by subtracting large moments.
 - Zero sigma with at least two observations means all bands equal the mean;
-  z is na and Position is `n/a`. Missing current P/E also makes z/Position
-  unavailable even if the window still has a valid mean and sigma.
+  z is na and the internal verdict is `n/a`. The table explains this as
+  `σ=0`. Missing current P/E also makes z/Position unavailable even if the
+  window still has a valid mean and sigma; the table says `Missing P/E`.
 - Bands are mean ±sigma and mean ±2*sigma. They imply no universal 68%/95%
   coverage. Z is `(currentPE - mean) / sigma` only for valid current P/E,
   mean and strictly positive sigma.
@@ -135,8 +136,9 @@ allowlist: other stocks may work, but they have not been certified here.
   Display rounding never affects classification.
 - On an open bar, prices and statistics can change; normal Pine rollback
   semantics prevent counting every tick as another sample. The implementation
-  uses no `varip` state. Live close/reload remains unverified because every
-  supported equity checked during this task was closed.
+  uses no `varip` state. The 2026-09-25 [live follow-up](validation.md#live-realtime-follow-up--2026-09-25)
+  verified tick updates, bar close and reload stability at the indicator's
+  two-decimal display precision.
 
 All history uses Welford count/mean/M2 state: constant memory and O(1) work per
 bar. Its result depends on the bars TradingView loaded for the selected symbol,
@@ -165,6 +167,24 @@ verdict strings exactly. Test exact verdict boundaries and values 1e-6
 either side without applying a tolerance to the classification itself.
 Raw probe numbers are printed to eight decimals; do not interpret their
 last digit as a provider accuracy guarantee.
+
+## Presentation contract
+
+The annualized EPS methods have separate, mutually exclusive plot titles:
+`Reported-quarter EPS ×4 proxy P/E` and `TTM EPS growth scenario P/E`.
+The table names the active source and shows `Off` when the forward output is
+disabled, or `Unavailable` when the selected method has no valid ratio.
+
+The mean and bands retain their statistical state through missing bars, but
+their plots have a gap whenever the current trailing P/E is unavailable. The
+table also shows mean `n/a` on that bar, matching the plotted/Data Window
+value; its mean label gives the selected window and number of valid samples.
+The z/Position fields explain missing current P/E, fewer than two samples,
+zero sigma, or otherwise undefined sigma/z instead of presenting each case
+as an unexplained `n/a`.
+Plots use broken lines and the ±1σ fill does not bridge missing bars. Table
+text and backgrounds use the chart's foreground/background colors for both
+light and dark themes.
 
 ## Provider and mode limitations
 
