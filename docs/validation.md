@@ -778,3 +778,31 @@ to the exact repository Data Probe text after line-ending normalization; it
 compiled, its original values returned, and the layout reported all changes
 saved. The previously documented navy background and visible-range difference
 remained.
+
+### Review guard follow-up — 2026-09-25
+
+Production `indicators/pe.pine` stayed at SHA-256
+`c64f2d37636c217c96687f12885ab740380f60352d055bad354abb102986f5f0`.
+The source checker now requires each of the four actual band plot lines to
+retain `showBands`, `not na(pe)` and `plot.style_linebr`. In-memory mutations
+of each condition on each plot were caught: 12/12 RED. Five further mutations
+of the forward label expression, label cell, value cell, analyst-mode constant
+and growth-mode constant were also caught: 5/5 RED. Each mutated source was
+passed to the production source checker; this guards the actual output wiring,
+not unused declarations. The production source passed unchanged.
+
+The generated harness additionally checks
+`displayZStatus(7.0, 3, 1.0, na) == "Undefined"`. Removing only its `na(z)`
+branch from a temporary, production-derived source gave mutant source SHA-256
+`4347599847da282ebc66f81a8351892dde6a4bebb18dd1b9725e03dd0a4531fa`.
+Its exact Pine harness (SHA-256
+`368d788a7b45f8710702bc9ebd79124c9b794748b4b254d9fca174fb32b54d3b`)
+compiled on AAPL 1D and raised runtime error `RE10142` as expected. The
+unmodified production-derived harness (SHA-256
+`0926949cf12c23b7681503ba506d179e99a5369d4d822e9ec08ef41026ecd901`)
+compiled and displayed `Smoke result = 1.0000` with no runtime error. Editor
+text matched each harness file before execution. The Data Probe editor text
+was then restored from the repository, matched after line-ending
+normalization, compiled, and showed its original plots and values. AAPL 1D
+layout reported `All changes saved`; the previously documented background
+and visible-range differences remained.

@@ -115,6 +115,16 @@ def check_data_contract(source: str) -> None:
         raise fail("production must have exactly one Show Forward result assignment")
     if any(re.match(r"^\s*fwdPE\s*:=", line) for line in lines[lines.index(forward_call) + 1 :]):
         raise fail("production must not reassign fwdPE after the guarded result")
+    forward_wiring = (
+        f'const string ANALYST_MODE = "{ANALYST_MODE}"',
+        'const string GROWTH_MODE = "Growth assumption"',
+        'string forwardLabel = fwdMode == ANALYST_MODE ? "Reported Q ×4 proxy P/E" : "TTM growth scenario P/E"',
+        "table.cell(t, 0, 2, forwardLabel, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)",
+        "table.cell(t, 1, 2, forwardValue, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)",
+    )
+    for statement in forward_wiring:
+        if sum(line.strip() == statement for line in lines) != 1:
+            raise fail(f"production forward UI wiring must contain exactly once: {statement}")
 
 
 def check_statistics_contract(source: str) -> None:
@@ -156,6 +166,15 @@ def check_statistics_contract(source: str) -> None:
     for statement in production_wiring:
         if lines.count(statement) != 1:
             raise fail(f"production statistics wiring must contain exactly once: {statement}")
+    band_plots = (
+        'pu1 = plot(showBands and not na(pe) ? u1 : na, "+1σ", color=color.new(chart.fg_color, 55), style=plot.style_linebr)',
+        'pl1 = plot(showBands and not na(pe) ? l1 : na, "-1σ", color=color.new(chart.fg_color, 55), style=plot.style_linebr)',
+        'plot(showBands and not na(pe) ? u2 : na, "+2σ", color=color.new(color.red, 65), style=plot.style_linebr)',
+        'plot(showBands and not na(pe) ? l2 : na, "-2σ", color=color.new(color.green, 65), style=plot.style_linebr)',
+    )
+    for statement in band_plots:
+        if lines.count(statement) != 1:
+            raise fail(f"production band plot must contain exactly once: {statement}")
     forbidden = ("ta.sma(pe, lookback)", "ta.stdev(pe, lookback)", "s2 / n -", "statsRemove(", "varip")
     for statement in forbidden:
         if statement in compact:
@@ -239,7 +258,7 @@ bool rollingFixtures = rollingCount == 2 and closeEnough(rollingMean, 3.0) and c
 bool largeRollingFixtures = largeRollingCount == 10 and closeEnough(largeRollingMean, 7.0) and closeEnough(largeRollingSigma, 0.0) and largeSparseCount == 2 and closeEnough(largeSparseMean, 3.0) and closeEnough(largeSparseSigma, 1.0)
 bool bandFixtures = closeEnough(historyMean + historySigma, 20.0 + historyExpectedSigma) and closeEnough(historyMean - historySigma, 20.0 - historyExpectedSigma) and closeEnough(historyMean + 2.0 * historySigma, 20.0 + 2.0 * historyExpectedSigma) and closeEnough(historyMean - 2.0 * historySigma, 20.0 - 2.0 * historyExpectedSigma)
 bool verdictFixtures = statsVerdict(2.0) == "Rich" and statsVerdict(2.000001) == "Very rich" and statsVerdict(1.999999) == "Rich" and statsVerdict(1.0) == "Normal" and statsVerdict(1.000001) == "Rich" and statsVerdict(0.999999) == "Normal" and statsVerdict(-0.999999) == "Normal" and statsVerdict(-1.0) == "Normal" and statsVerdict(-1.000001) == "Cheap" and statsVerdict(-1.999999) == "Cheap" and statsVerdict(-2.0) == "Cheap" and statsVerdict(-2.000001) == "Very cheap"
-bool statusFixtures = displayZStatus(float(na), 3, 1.0, float(na)) == "Missing P/E" and displayZStatus(5.0, 1, float(na), float(na)) == "Need ≥2" and displayZStatus(7.0, 3, float(na), float(na)) == "Undefined" and displayZStatus(7.0, 3, 0.0, float(na)) == "σ=0" and displayZStatus(20.0, 3, 1.0, 1.25) == "1.25 sd"
+bool statusFixtures = displayZStatus(float(na), 3, 1.0, float(na)) == "Missing P/E" and displayZStatus(5.0, 1, float(na), float(na)) == "Need ≥2" and displayZStatus(7.0, 3, float(na), float(na)) == "Undefined" and displayZStatus(7.0, 3, 0.0, float(na)) == "σ=0" and displayZStatus(7.0, 3, 1.0, float(na)) == "Undefined" and displayZStatus(20.0, 3, 1.0, 1.25) == "1.25 sd"
 bool smokePass = ratioFixtures and growthFixtures and analystFixtures and emptyFixtures and oneFixtures and constantFixtures and historyFixtures and gapFixtures and longGapFixtures and transitionFixtures and largeFixtures and warmupFixtures and rollingFixtures and largeRollingFixtures and bandFixtures and verdictFixtures and statusFixtures
 if barstate.islast and not smokePass
     runtime.error("P/E contract smoke check failed")
