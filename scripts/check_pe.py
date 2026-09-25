@@ -156,7 +156,10 @@ def check_statistics_contract(source: str) -> None:
             raise fail(f"production statistics contract is missing: {statement}")
     production_wiring = (
         "[nextAllCount, nextAllMean, nextAllM2] = statsAdd(allCount, allMean, allM2, pe)",
-        "[nextRollingBars, rollingCount, rollingMean, rollingM2] = statsQueueUpdate(rollingInValues, rollingInCounts, rollingInMeans, rollingInM2s, rollingOutValues, rollingOutCounts, rollingOutMeans, rollingOutM2s, rollingBars, lookback, pe)",
+        """[nextRollingBars, rollingCount, rollingMean, rollingM2] = if lbMode == "Rolling lookback"
+    statsQueueUpdate(rollingInValues, rollingInCounts, rollingInMeans, rollingInM2s, rollingOutValues, rollingOutCounts, rollingOutMeans, rollingOutM2s, rollingBars, lookback, pe)
+else
+    [rollingBars, 0, 0.0, 0.0]""",
         'bool allHistory = lbMode == "All history"',
         "u1 = meanPE + sdPE",
         "l1 = meanPE - sdPE",
@@ -164,7 +167,7 @@ def check_statistics_contract(source: str) -> None:
         "l2 = meanPE - 2 * sdPE",
     )
     for statement in production_wiring:
-        if lines.count(statement) != 1:
+        if len(re.findall(r"(?m)^" + re.escape(statement) + r"$", source)) != 1:
             raise fail(f"production statistics wiring must contain exactly once: {statement}")
     band_plots = (
         'pu1 = plot(showBands and not na(pe) ? u1 : na, "+1σ", color=color.new(chart.fg_color, 55), style=plot.style_linebr)',

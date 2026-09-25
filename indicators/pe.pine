@@ -171,7 +171,10 @@ var array<int> rollingOutCounts = array.new<int>()
 var array<float> rollingOutMeans = array.new<float>()
 var array<float> rollingOutM2s = array.new<float>()
 var int rollingBars = 0
-[nextRollingBars, rollingCount, rollingMean, rollingM2] = statsQueueUpdate(rollingInValues, rollingInCounts, rollingInMeans, rollingInM2s, rollingOutValues, rollingOutCounts, rollingOutMeans, rollingOutM2s, rollingBars, lookback, pe)
+[nextRollingBars, rollingCount, rollingMean, rollingM2] = if lbMode == "Rolling lookback"
+    statsQueueUpdate(rollingInValues, rollingInCounts, rollingInMeans, rollingInM2s, rollingOutValues, rollingOutCounts, rollingOutMeans, rollingOutM2s, rollingBars, lookback, pe)
+else
+    [rollingBars, 0, 0.0, 0.0]
 rollingBars := nextRollingBars
 
 bool allHistory = lbMode == "All history"
