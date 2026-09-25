@@ -620,9 +620,57 @@ The market banner reported `Рынок закрыт` for AAPL. GOOG, SONY and SE
 other EPS-bearing equities already validated for this task, were also closed
 in the weekend session. Crypto was not substituted because it has no supported
 financial/EPS series. Consequently the live open-bar update, market close and
-subsequent reload acceptance criterion remains **unverified**. Historical
-recalculation and reload evidence above does not replace that live criterion.
+subsequent reload acceptance criterion remained **unverified at that run**.
+Historical recalculation and reload evidence above did not replace that live
+criterion; the later live follow-up below closes it.
 
 `make check`, `make test` and `git diff --check` exited 0 after the follow-up.
 The local commands verify source integrity and regenerate the harness; Pine
 compilation and runtime are the separate chart observations recorded above.
+
+### Live realtime follow-up — 2026-09-25
+
+The previously unverified live criterion was repeated while the US equity
+market was open. TradingView reported `Рынок открыт` and a five-second Cboe One
+update cadence for BATS:AAPL. The chart used 1-minute bars, the regular session,
+USD, dividend adjustment off, `EARNINGS_PER_SHARE_DILUTED`, and the
+reported-quarter estimate ×4 proxy. The Pine Editor contained the exact
+production source with SHA-256
+`20265b7390dc246a31900b6f14fca1043082c87ff32fef68b94f490dc57ff4da`.
+Times below are the chart clock, UTC-4.
+
+With **All history**, the open 10:25 bar changed as follows:
+
+| Timestamp | Close | P/E | Mean | +1σ | -1σ | +2σ | -2σ |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 10:25:07 | 335.51 | 38.46 | 37.99 | 38.93 | 37.05 | 39.87 | 36.11 |
+| 10:25:21 | 335.57 | 38.47 | 37.99 | 38.93 | 37.05 | 39.87 | 36.11 |
+| 10:25:29 | 335.69 | 38.48 | 37.99 | 38.93 | 37.05 | 39.87 | 36.11 |
+
+At 10:26 the next bar opened, so 10:25 was selected in Data Window. Its final
+close was 335.92; production showed trailing P/E 38.51, forward P/E 44.39,
+mean 37.99, and bands 38.93, 37.05, 39.87, 36.11. After saving the layout and
+performing a normal page reload, the same 10:25 bar showed the same close and
+all seven indicator values. The rendered-value differences were all 0.00,
+within the ±0.005 tolerance implied by `precision=2`.
+
+The same check was also completed with **Rolling lookback = 252**. On the open
+10:29 bar, the 10:29:24 observation was P/E 38.56, mean 38.64, and bands 38.75,
+38.53, 38.85, 38.42; at 10:29:47 P/E changed to 38.57 while mean and bands
+remained at those displayed values. At 10:30 the next bar opened. The closed
+10:29 bar had close 336.36, trailing P/E 38.56, forward P/E 44.45, mean 38.64,
+and bands 38.75, 38.53, 38.85, 38.42. A normal reload reproduced every value
+for that same closed bar exactly: displayed differences 0.00, again within
+±0.005.
+
+No symbol, timeframe, visible range, session, currency, or adjustment setting
+was changed between each pre-reload and post-reload comparison; the persisted
+1-minute layout reopened on the same data and the same selected closed bar.
+TradingView exposes the values here only to the script's two-decimal display
+precision, so this live check proves tick updates, bar finalization, and reload
+stability at that observable precision rather than hidden floating-point bit
+identity. Afterward the scratch script was restored to the exact repository
+`tests/pine/data-probe.pine` (SHA-256
+`aa0c5bda3b156428fe3c3aca058bd964fb71fe82b4c6c9ef72b8246fe80401ce`), the
+chart was returned to 1D with Data Window closed, and the restored layout was
+saved.
