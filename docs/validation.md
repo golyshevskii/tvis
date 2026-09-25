@@ -496,3 +496,181 @@ analyst request is inside the enabled analyst-mode branch. The growth scenario
 is calculated only from TTM EPS and remains independent of analyst availability.
 Provider revisions, point-in-time history, chart currency overrides and
 unverified price-unit contexts retain the limits in the calculation contract.
+
+## History statistics correction — 2026-09-19
+
+Production SHA-256 is
+`20265b7390dc246a31900b6f14fca1043082c87ff32fef68b94f490dc57ff4da`;
+the generated harness SHA-256 is
+`33dd89b6d91cc058fec27be245d24cc7f856dcc0c486f47f26e76dddb7e2b6e9`.
+The harness copies the marked statistics functions from that exact production
+source and calls the production `statsQueueUpdate` implementation. It does not
+reconstruct rolling orchestration. Numeric comparisons use
+`abs(actual - expected) <= max(1e-8, 1e-10 * abs(expected))`; counts, `na`
+states and verdict strings are exact.
+
+### RED, independent expected values and GREEN
+
+The first Pine RED fixture put a `999` outlier immediately before the final ten
+chart bars `[na, 2, na, 4, na, na, na, na, na, na]`. On AAPL 1D, the former
+`ta.sma`/`ta.stdev` path stopped on bar 10 with
+`RED rolling: old built-ins do not implement the last 10 chart bars`. This is
+the expected failure because those built-ins seek non-na observations beyond
+the fixed chart-bar window. It ran at 10:11:13 +04; the fixture SHA-256 is
+`5f4852475fda2060ce9dc5f25950036e3d3e25faff0510aff14e17c2f4195787`.
+
+The separate large-value RED used `[100000000, 100000001, 100000002]` and the
+former `sum(x*x)/n - mean*mean` formula. Pine stopped on bar 0 with
+`RED stability: old moment subtraction returned 2`; the population variance is
+`2/3`. It ran at 10:12:02 +04; the fixture SHA-256 is
+`e9781501006f5bedf4e3f4315286646ac9b7a6fa268a0fa0fc656e3722cbe487`.
+
+Review exposed a second numerical failure in the first rolling implementation:
+its inverse-Welford eviction lost precision after removing a large outlier. A
+runnable Pine fixture used a 10-bar window and both
+`[100000000] + [7] × 10` and
+`[100000000, na, 2, na, 4, na, na, na, na, na, na]`. On AAPL 1D it stopped on
+bar 11527 at 10:43:50 +04 with
+`RED inverse removal: constant=0.1, sparse=1.5`; the correct population
+variances are 0 and 1. Fixture SHA-256 is
+`5367c3a9cfb8183341000780cbf313bc53374b6d1a02928716effca8b7fd1881`.
+
+Python's standard-library `statistics.pvariance`, independently of production,
+gave these reference values:
+
+```text
+history       count=3  mean=20.0        variance=66.66666666666667 sigma=8.16496580927726
+large         count=3  mean=100000001.0 variance=0.6666666666666666 sigma=0.816496580927726
+transition    count=3  mean=13.333333333333334 variance=22.22222222222222 sigma=4.714045207910317
+rolling_valid count=2  mean=3.0         variance=1.0 sigma=1.0
+constant_tail count=10 mean=7.0         variance=0.0 sigma=0.0
+sparse_tail   count=2  mean=3.0         variance=1.0 sigma=1.0
+```
+
+The fix keeps All-history Welford unchanged. Rolling now uses a bounded
+aggregate queue made from two stacks. Each stack entry stores its Welford
+prefix aggregate, so an expired chart slot is popped without inverse
+subtraction. Every slot, including `na`, is pushed once, transferred at most
+once and popped once. Runtime is O(1) amortized per bar, with an O(N) worst-case
+transfer, and memory is bounded O(N); there is no per-bar O(N) scan and no
+`varip`.
+
+The GREEN harness covers `n=0/1/2`, constant data, internal and trailing `na`,
+a gap longer than the window, transition and large-value cases, prefix warm-up,
+the exact fixed chart-bar window, both inverse-removal counterexamples,
+population sigma, all four bands, missing current P/E and zero sigma. Verdicts
+are checked at exact `-2/-1/1/2`, outward neighbors, and inward neighbors
+`1.999999`, `0.999999`, `-0.999999`, `-1.999999`; no rounded value is used for
+classification. The exact generated harness compiled on AAPL 1D at 10:47:27
++04, displayed `Smoke result = 1.0000`, and produced no runtime error.
+
+### Production-linked mutation proof
+
+The checker requires each production assignment exactly once and rejects the
+old inverse-removal helper. In-memory mutations of the production source all
+exited nonzero:
+
+```text
+MUTATION_CAUGHT unstable-m2: missing stable Welford M2 update
+MUTATION_CAUGHT wrong-denominator: missing population m2 / count expression
+MUTATION_CAUGHT eviction-na: missing statsStackPop(outValues, outCounts, outMeans, outM2s)
+MUTATION_CAUGHT rounded-verdict: missing exact statsVerdict(zscore) wiring
+MUTATION_CAUGHT all-history-pe[1]: missing exact statsAdd(..., pe) wiring
+MUTATION_CAUGHT force-all-history: missing exact lbMode selector
+MUTATION_CAUGHT rolling-pe[1]: missing exact statsQueueUpdate(..., pe) wiring
+MUTATION_CAUGHT u1-times-two: missing exact u1 = meanPE + sdPE
+MUTATION_CAUGHT l1-times-two: missing exact l1 = meanPE - sdPE
+MUTATION_CAUGHT u2-times-three: missing exact u2 = meanPE + 2 * sdPE
+MUTATION_CAUGHT l2-times-three: missing exact l2 = meanPE - 2 * sdPE
+```
+
+The eviction mutation replaced the real queue pop with the former
+`statsRemove(..., na)` shape. Other controls reintroduce an unstable moment,
+use a fixed denominator, round z before classification, change the current bar
+to the previous bar, force the mode selector, or alter a real production band
+expression. Thus the generated runtime fixtures exercise the extracted
+production functions, while the source guard separately protects their actual
+production call sites and all four plotted band assignments.
+
+### Production matrix and reload
+
+The exact production source compiled without diagnostics at 10:48:48 +04 and
+again at 10:59:13 +04. All observations used BATS:AAPL, dividend adjustment
+off, diluted TTM EPS, the reported-quarter estimate proxy, and the last
+completed bar ending 2026-09-18. The values below are mean, +1σ, -1σ, +2σ and
+-2σ; trailing P/E was 38.53 and proxy P/E 44.42 throughout.
+
+| Timeframe | All history | Rolling 252 |
+|---|---|---|
+| 1D | 28.55, 35.22, 21.87, 41.90, 15.19 | 35.08, 37.19, 32.96, 39.31, 30.85 |
+| 1W | 28.52, 35.20, 21.84, 41.88, 15.16 | 31.03, 35.68, 26.38, 40.33, 21.73 |
+| 1M | 28.44, 35.14, 21.75, 41.83, 15.05 | 28.44, 35.14, 21.75, 41.83, 15.05 |
+
+The monthly results match because the available prefix contains fewer than 252
+bars with valid P/E. Rolling 5000 compiled and ran without error on 1D and
+matched the loaded All-history tuple `28.55, 35.22, 21.87, 41.90, 15.19`,
+exercising the input ceiling without claiming 5000 loaded valid observations.
+
+After the chart layout was saved, a normal page reload reproduced the 1D
+Rolling 252 tuple exactly at 11:00:14 +04. The scratch slot was then restored to
+the exact repository `tests/pine/data-probe.pine`; it compiled at 11:00:34 +04,
+its raw plots returned, and the restored layout was saved.
+
+The market banner reported `Рынок закрыт` for AAPL. GOOG, SONY and SEB, the
+other EPS-bearing equities already validated for this task, were also closed
+in the weekend session. Crypto was not substituted because it has no supported
+financial/EPS series. Consequently the live open-bar update, market close and
+subsequent reload acceptance criterion remained **unverified at that run**.
+Historical recalculation and reload evidence above did not replace that live
+criterion; the later live follow-up below closes it.
+
+`make check`, `make test` and `git diff --check` exited 0 after the follow-up.
+The local commands verify source integrity and regenerate the harness; Pine
+compilation and runtime are the separate chart observations recorded above.
+
+### Live realtime follow-up — 2026-09-25
+
+The previously unverified live criterion was repeated while the US equity
+market was open. TradingView reported `Рынок открыт` and a five-second Cboe One
+update cadence for BATS:AAPL. The chart used 1-minute bars, the regular session,
+USD, dividend adjustment off, `EARNINGS_PER_SHARE_DILUTED`, and the
+reported-quarter estimate ×4 proxy. The Pine Editor contained the exact
+production source with SHA-256
+`20265b7390dc246a31900b6f14fca1043082c87ff32fef68b94f490dc57ff4da`.
+Times below are the chart clock, UTC-4.
+
+With **All history**, the open 10:25 bar changed as follows:
+
+| Timestamp | Close | P/E | Mean | +1σ | -1σ | +2σ | -2σ |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 10:25:07 | 335.51 | 38.46 | 37.99 | 38.93 | 37.05 | 39.87 | 36.11 |
+| 10:25:21 | 335.57 | 38.47 | 37.99 | 38.93 | 37.05 | 39.87 | 36.11 |
+| 10:25:29 | 335.69 | 38.48 | 37.99 | 38.93 | 37.05 | 39.87 | 36.11 |
+
+At 10:26 the next bar opened, so 10:25 was selected in Data Window. Its final
+close was 335.92; production showed trailing P/E 38.51, forward P/E 44.39,
+mean 37.99, and bands 38.93, 37.05, 39.87, 36.11. After saving the layout and
+performing a normal page reload, the same 10:25 bar showed the same close and
+all seven indicator values. The rendered-value differences were all 0.00,
+within the ±0.005 tolerance implied by `precision=2`.
+
+The same check was also completed with **Rolling lookback = 252**. On the open
+10:29 bar, the 10:29:24 observation was P/E 38.56, mean 38.64, and bands 38.75,
+38.53, 38.85, 38.42; at 10:29:47 P/E changed to 38.57 while mean and bands
+remained at those displayed values. At 10:30 the next bar opened. The closed
+10:29 bar had close 336.36, trailing P/E 38.56, forward P/E 44.45, mean 38.64,
+and bands 38.75, 38.53, 38.85, 38.42. A normal reload reproduced every value
+for that same closed bar exactly: displayed differences 0.00, again within
+±0.005.
+
+No symbol, timeframe, visible range, session, currency, or adjustment setting
+was changed between each pre-reload and post-reload comparison; the persisted
+1-minute layout reopened on the same data and the same selected closed bar.
+TradingView exposes the values here only to the script's two-decimal display
+precision, so this live check proves tick updates, bar finalization, and reload
+stability at that observable precision rather than hidden floating-point bit
+identity. Afterward the scratch script was restored to the exact repository
+`tests/pine/data-probe.pine` (SHA-256
+`aa0c5bda3b156428fe3c3aca058bd964fb71fe82b4c6c9ef72b8246fe80401ce`), the
+chart was returned to 1D with Data Window closed, and the restored layout was
+saved.
