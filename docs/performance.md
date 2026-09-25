@@ -148,6 +148,10 @@ failed` at line 278. Mutant SHA-256:
 The local source guard was updated first and failed on the unguarded baseline.
 After the change it passed; in-memory mutations reversing the mode, removing
 the condition, using `pe[1]`, and changing the +1σ formula were all rejected.
+Review also exposed an extra unguarded queue call that passed this check.
+The guard now requires one queue declaration and one call: inserting a
+second call on the same arrays before the conditional block is rejected,
+while unchanged production passes. Production and benchmark SHAs are unchanged.
 Temporary benchmark/equivalence additions are absent from production.
 
 Restoring the correct condition returned the probe to GREEN on the same

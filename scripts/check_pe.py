@@ -169,6 +169,8 @@ else
     for statement in production_wiring:
         if len(re.findall(r"(?m)^" + re.escape(statement) + r"$", source)) != 1:
             raise fail(f"production statistics wiring must contain exactly once: {statement}")
+    if len(re.findall(r"\bstatsQueueUpdate\s*\(", source)) != 2:
+        raise fail("production must contain one statsQueueUpdate declaration and one guarded call")
     band_plots = (
         'pu1 = plot(showBands and not na(pe) ? u1 : na, "+1σ", color=color.new(chart.fg_color, 55), style=plot.style_linebr)',
         'pl1 = plot(showBands and not na(pe) ? l1 : na, "-1σ", color=color.new(chart.fg_color, 55), style=plot.style_linebr)',
