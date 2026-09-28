@@ -103,7 +103,7 @@ ADR conversion/split policy is supplied by the provider; this probe does
 not certify arbitrary ADR ratios or corporate-action histories.
 
 The final 2026-09-27 matrix additionally measured standard regular-session
-60-minute and monthly AAPL/GOOG bars; see [validation](validation.md#final-validation--2026-09-27).
+60-minute and monthly AAPL/GOOG bars; see [validation](validation.md#historical-final-validation--2026-09-27).
 Currency overrides on the chart, minor-unit quotes (e.g. GBX), synthetic
 charts and extended sessions remain outside the supported context. The
 Heikin Ashi check confirmed that the script uses the synthetic close; it does

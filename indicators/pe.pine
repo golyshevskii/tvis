@@ -20,10 +20,9 @@
 //   * Fundamental history on TradingView is limited (often a handful of years),
 //     so the "all history" mean only spans the available EPS data.
 //   * Unsupported symbols and unavailable data produce n/a.
-//   * Verified on regular-session daily/weekly bars with dividend adjustment off,
-//     native quote currency, and ordinary share/unit prices. Chart currency
-//     overrides, minor-unit quotes, synthetic charts, extended sessions, and
-//     other timeframes are unverified.
+//   * Use standard candles, regular sessions, dividend adjustment off, native quote
+//     currency, and ordinary share/unit prices. Chart currency overrides, minor-unit
+//     quotes, synthetic charts, and extended sessions are unverified.
 
 indicator("tvis: P/E History & Annualized EPS", precision=2)
 
@@ -235,7 +234,7 @@ if barstate.islast
         table.cell(t, 1, 2, forwardValue, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
         table.cell(t, 0, 3, "Mean P/E (" + sampleLabel + "; n=" + str.tostring(sampleCount) + ")", text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
         table.cell(t, 1, 3, na(visibleMeanPE) ? "n/a" : str.tostring(visibleMeanPE, "#.##"), text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
-        table.cell(t, 0, 4, "Z-score", text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
+        table.cell(t, 0, 4, "Deviation from mean", text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
         table.cell(t, 1, 4, zStatus, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
         table.cell(t, 0, 5, "Position", text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
         table.cell(t, 1, 5, na(zscore) ? zStatus : verdict, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)

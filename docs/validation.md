@@ -1,11 +1,118 @@
 # Pine validation
 
-## Final validation — 2026-09-27
+## Final-source live validation — 2026-09-28
 
-**Historical/numerical checks passed; final-version realtime is NOT RUN.**
-This is not an all-green release sign-off. The 2026-09-25 realtime observation
+**Final-source Pine compilation, harness, live ticks and closed-bar reload passed
+in both All history and Rolling 252.** The Sunday realtime gap recorded below
+is now closed. The publication package is prepared; no TradingView
+publication was performed.
+
+| Artifact | SHA-256 |
+|---|---|
+| Final `indicators/pe.pine` | `325a2ca3915f7879590e66937b74110c01b48799f90f80800b221c9453b85f10` |
+| Generated contract harness | `a39e59794a25471e7b1f8f1d25216adbe904712401bf2c8349d0c03e87f80d69` |
+| Restored data probe | `aa0c5bda3b156428fe3c3aca058bd964fb71fe82b4c6c9ef72b8246fe80401ce` |
+
+Compared with the September 27 source, production changes are limited to the
+visible table label `Z-score` → `Deviation from mean` and replacement of the
+stale timeframe-coverage comment with supported-context instructions. Financial
+requests, ratio/statistics functions, inputs and execution flow are unchanged.
+The earlier numerical and performance records retain their original SHAs;
+they were not presented as new runs. The renamed row still displays the same
+z-score and `sd` unit. README and publication text explain its formula and sign.
+
+The existing local checker now requires exactly one actual stripped table-cell
+line with the new label. Reverting the label while adding a matching comment,
+duplicating the actual line, or removing it each fails the check; the real
+source passes. This is a literal UI rename, not a numerical behavior change.
+The regenerated harness compiled and ran in Pine with **Smoke result = 1.0000**
+(19:21 +04). The exact production source was then pasted, copied back in full,
+SHA-checked after CRLF normalization, saved, compiled and executed. A post-live
+readback from saved **tvis: P/E Final Validation** again matched the final SHA.
+No unexpected compiler diagnostic or runtime error occurred in these runs.
+
+### Live procedure and observations
+
+Chart `UB8lbzak`, search symbol NASDAQ:AAPL, runtime **BATS:AAPL**, 1-minute
+standard candles, native USD, regular session, dividend adjustment off.
+TradingView reported market open and NASDAQ data from Cboe One updated every
+five seconds. Inputs: diluted TTM EPS, reported-quarter estimate ×4 proxy on,
+growth 8%, lookback 252, bands/table on, Top right/Normal. Only the window mode
+changed between the two runs. Times below are **2026-09-28, UTC-4**; add four
+hours for UTC or eight for Tbilisi.
+
+| Mode / open bar | Observation time | Close | Trailing P/E | Proxy | Mean | +1σ | -1σ | +2σ | -2σ |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| All / 11:21 | 11:21:34 | 340.84 | 39.07 | 45.04 | 38.07 | 39.01 | 37.13 | 39.95 | 36.18 |
+| All / 11:21 | 11:21:49 | 340.82 | 39.07 | 45.04 | 38.07 | 39.01 | 37.13 | 39.95 | 36.18 |
+| All / 11:21 | 11:21:54 | 340.87 | 39.08 | 45.04 | 38.07 | 39.01 | 37.13 | 39.95 | 36.18 |
+| Rolling / 11:23 | 11:23:24 | 341.19 | 39.11 | 45.09 | 39.06 | 39.15 | 38.96 | 39.25 | 38.86 |
+| Rolling / 11:23 | 11:23:42 | 340.90 | 39.08 | 45.05 | 39.06 | 39.15 | 38.96 | 39.25 | 38.86 |
+| Rolling / 11:23 | 11:23:58 | 340.91 | 39.08 | 45.05 | 39.06 | 39.15 | 38.96 | 39.25 | 38.86 |
+
+All-history table count stayed at **5572** within 11:21 and advanced to **5573**
+on the next minute; Rolling count was **252**. Multiple tick updates therefore
+did not accumulate extra samples within a bar. The displayed mean/bands need
+not move at every tick because they are rounded to two decimals.
+
+After each next minute opened, the preceding bar was selected in Data Window.
+Layout saving was confirmed by **Все изменения сохранены** before each normal
+page reload. The same date/time was selected again after reload; no symbol,
+interval, session, adjustment, currency or indicator input changed. Reload
+restored the saved viewport; cursor selection was repeated on the same bar.
+
+| Mode / closed bar | Before / after observation time | Close | P/E | Proxy | Mean | +1σ | -1σ | +2σ | -2σ |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| All / 11:21 | 11:22:09 / 11:22:38 | 340.88 | 39.08 | 45.05 | 38.07 | 39.01 | 37.13 | 39.95 | 36.18 |
+| Rolling / 11:23 | 11:24:15 / 11:24:38 | 340.94 | 39.08 | 45.05 | 39.06 | 39.15 | 38.96 | 39.25 | 38.86 |
+
+**All eight displayed numbers matched before/after in both rows**, including
+price. Indicator differences were 0.00, within the ±0.005 display tolerance
+from `precision=2`; the hidden growth plot remained unavailable. The supervisor
+independently compared both raw output rows and prices. This proves observable
+live updates, bar finalization and reload stability for these contexts, not
+hidden floating-point identity or immunity to future provider revisions.
+The table always describes the current last bar, so its current z/verdict is
+not treated as a historical Data Window value.
+
+An earlier reload before layout-save acknowledgement reopened the old NOW
+layout and was excluded. Likewise, an observation immediately after changing
+window mode still contained pre-recalculation values and was excluded. Neither
+is reported as a numerical mismatch or a passing final-source comparison.
+
+Raw DOM snapshots, screenshots, source readbacks and harness evidence were
+saved outside the repository at `/tmp/tvis-task7-live/`. In particular,
+`all325-closed-before.txt` / `all325-closed-after.txt` and the corresponding
+`rolling325-*` pair contain the selected date, time, price and complete output
+row; `all325-live1/2/3.txt` and `rolling325-live2/3/4.txt` contain the tick
+observations. Reproduce by saving the exact source/layout, recording three
+updates on one open minute, selecting that minute after the next one opens,
+then normally reloading and selecting the identical closed minute.
+
+### Saved copies and restoration
+
+The original Data Probe source was backed up before testing. Its chart instance
+was temporarily removed to permit adding the separate final copy; the user's
+old P/E instance and hidden ORB/LuxAlgo instances were preserved. After testing,
+the final test instance was removed and the exact original Data Probe was
+added again. Its source readback matched the probe SHA above; it compiled and
+showed the original EPS/estimate plots, comparison JPY, and the source-default
+log start 2026-01-01 00:00 UTC. The layout returned to NOW 1M standard candles
+with T1 watchlist, editor/data window closed, and was saved. The separately
+saved final editor copy remains the verified production version.
+
+The updated publication image shows this final source on AAPL 1D at 11:25:54
+UTC-4, with the production pane enlarged. Its current daily bar is open; this
+illustration is separate from the closed-minute comparisons above.
+
+
+## Historical final validation — 2026-09-27
+
+**Status on September 27: historical/numerical checks passed; realtime was NOT RUN.**
+The September 28 final-source live record above supersedes this remaining gap.
+This checkpoint was not an all-green release sign-off. The 2026-09-25 realtime observation
 below used an earlier source SHA and does not validate live behavior of the
-final source. Production code was unchanged in this final documentation task.
+final source. Production code was unchanged at the September 27 checkpoint.
 
 | Artifact | SHA-256 |
 |---|---|
@@ -51,8 +158,10 @@ Ratio tolerance was 1e-8; displayed z tolerance was 1e-7 because rounding an
 relax the full-precision Pine mean/sigma tolerance above.
 
 Session raw DOM logs, CSV, suffixes and the runnable arithmetic check were
-retained outside the repository in `/tmp/tvis-task7-m2BvYh/`; these temporary
-files are supplementary evidence, not an installation dependency. Reproduce
+saved at validation time in `/tmp/tvis-task7-m2BvYh/`. These temporary files
+were no longer present on 2026-09-28; the recorded independent checks and
+measurements below are the retained report, not a claim of current raw-file
+availability. Reproduce
 by appending measurement code to a scratch copy, logging the selected raw
 fields and using the independent two-pass arithmetic above. Never leave a
 measurement suffix in the installed production script.
@@ -230,16 +339,16 @@ commands are `make check`, `make test`, `git diff --check`, and
 `shasum -a 256 indicators/pe.pine`; local gates do not substitute for Pine
 runtime or the outstanding realtime observation.
 
-### Remaining acceptance gap
+### Acceptance gap recorded on September 27 (superseded above)
 
-**Realtime on this exact production SHA is NOT RUN.** On Sunday 2026-09-27 the
+**Realtime on this exact historical source SHA was NOT RUN.** On Sunday 2026-09-27 the
 supported equities checked here reported market closed. No live supported
 stock's multiple ticks, bar close and subsequent reload were observed for
 this SHA. Historical reload and crypto activity do not close that criterion.
-Repeat the existing live procedure with this exact source when a supported
-market opens; record open-bar changes, final closed-bar values and the same
-bar after reload. Until then the final realtime acceptance criterion and
-full publication readiness remain open.
+The final realtime acceptance criterion remained open at this checkpoint.
+The September 28 record above closes it on the updated final source with
+multiple live ticks, bar close and the same closed bar after normal reload
+in both window modes.
 
 
 Local commands verify files and generate source. They do not compile or run

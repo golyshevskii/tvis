@@ -1,13 +1,13 @@
 # Publication draft
 
-**Status:** prepared for review, not published. Final-source realtime validation
-remains open; do not describe this package as fully validated until that check
-is recorded. No TradingView Publish action was performed.
+**Status:** prepared, not published. Final-source live ticks and
+closed-bar reload passed in both window modes on 2026-09-28; see the validation
+record for exact contexts and limits. No TradingView Publish action was performed.
 
 **ASCII title:** `tvis: P/E History & Annualized EPS`  
 **Author:** `golyshevskii`  
 **Source:** [`../indicators/pe.pine`](../indicators/pe.pine)  
-**SHA-256:** `2c4d1b711e0c76ac552e693c24cb368a068b27978d323995897a79080da73bd2`  
+**SHA-256:** `325a2ca3915f7879590e66937b74110c01b48799f90f80800b221c9453b85f10`
 **License:** MPL-2.0, with the source notice and author attribution retained.
 
 ## English description
@@ -15,7 +15,12 @@ is recorded. No TradingView Publish action was performed.
 Compare a stock's trailing price-to-earnings ratio with its own loaded chart
 history. Choose diluted or basic trailing-twelve-month EPS. The indicator
 shows trailing P/E, its arithmetic mean, population standard-deviation bands,
-and a z-score with a descriptive historical position.
+and **Deviation from mean** with a descriptive historical position.
+
+Deviation from mean is the z-score: `(current P/E - mean) / sigma`. Its unit,
+`sd`, means standard deviations. Positive values are above the historical mean,
+negative values below it; `1.5 sd` means 1.5 standard deviations above the mean.
+This describes relative historical position, not a probability or trade signal.
 
 An optional second ratio offers two distinct methods:
 
@@ -78,16 +83,18 @@ unchanging history. Neither proxy nor growth scenario predicts returns.
   with overlapping ranges; no universal speedup percentage is claimed.
 
 The final [validation record](validation.md) states exactly which source,
-contexts, dates and inputs were checked, and which realtime check remains open.
+contexts, dates and inputs were checked, including both final-source realtime
+window modes and closed-bar reload comparisons.
 
 ## Chart image
 
-![AAPL daily P/E indicator, standard-candle source, 2026-09-25 close](images/pe-aapl-daily.png)
+![AAPL daily P/E indicator with Deviation from mean, 2026-09-28](images/pe-aapl-daily.png)
 
-Captured 2026-09-27 on BATS:AAPL 1D, native USD, regular session, dividend
-adjustment off; diluted EPS, All history, reported-quarter proxy, default
-growth 8%/lookback 252, bands/table on, Top right/Normal. The exact production
-indicator pane is enlarged for the image; the underlying chart uses standard
-candles. Closed-bar trailing P/E 39.10, proxy 45.07, mean 28.57, n=2008,
-z=1.57 and Position Rich. The image is a historical illustration, not a live
-validation result.
+Captured 2026-09-28 at 11:25:54 UTC-4 on BATS:AAPL 1D, native USD, regular
+session, dividend adjustment off; diluted EPS, All history, reported-quarter
+proxy, default growth 8%/lookback 252, bands/table on, Top right/Normal.
+The exact final production pane is enlarged; the underlying chart uses standard
+candles. The current daily bar is open: trailing P/E 39.09, proxy 45.06,
+mean 28.58, n=2009, Deviation from mean 1.57 sd, Position Rich. This image
+illustrates the interface; the separate validation record documents live ticks
+and comparisons of identical closed one-minute bars.

@@ -20,10 +20,15 @@ TTM growth rate. It is not an NTM consensus forecast. All history averages
 valid loaded chart bars; Rolling uses the last N consecutive chart bars.
 Small positive EPS can create very large P/E values and dominate the mean.
 
+**Deviation from mean** is `(current P/E - mean) / sigma`, shown in standard
+deviations (`sd`). Positive values are above the mean; negative values are
+below it. For example, `1.5 sd` means 1.5 standard deviations above the mean.
+
 See the [calculation contract](docs/calculation-contract.md),
 [validation record](docs/validation.md), [performance measurements](docs/performance.md)
-and [publication draft](docs/publication.md). The final-version realtime check
-is still pending; the publication draft is not a release approval.
+and [publication draft](docs/publication.md). Final-source live ticks and
+closed-bar reload passed in both window modes on 2026-09-28. The publication
+draft is prepared; no script has been published.
 
 ## Local verification
 
