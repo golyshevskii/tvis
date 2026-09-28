@@ -119,8 +119,8 @@ def check_data_contract(source: str) -> None:
         f'const string ANALYST_MODE = "{ANALYST_MODE}"',
         'const string GROWTH_MODE = "Growth assumption"',
         'string forwardLabel = fwdMode == ANALYST_MODE ? "Reported Q ×4 proxy P/E" : "TTM growth scenario P/E"',
-        "table.cell(t, 0, 2, forwardLabel, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)",
-        "table.cell(t, 1, 2, forwardValue, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)",
+        "table.cell(t, 0, 1, forwardLabel, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)",
+        "table.cell(t, 1, 1, forwardValue, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)",
     )
     for statement in forward_wiring:
         if sum(line.strip() == statement for line in lines) != 1:
@@ -172,7 +172,10 @@ else
     if len(re.findall(r"\bstatsQueueUpdate\s*\(", source)) != 2:
         raise fail("production must contain one statsQueueUpdate declaration and one guarded call")
     display_wiring = (
-        'table.cell(t, 0, 4, "Deviation from mean", text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)',
+        "var table t = table.new(tablePos, 2, 5, border_width=1, frame_width=1,",
+        "table.clear(t, 0, 0, 1, 4)",
+        "table.cell(t, 1, 4, na(zscore) ? zStatus : verdict, text_color=positionTextColor(verdict), bgcolor=rowBg, text_size=txtSize)",
+        'table.cell(t, 0, 3, "Deviation from mean", text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)',
         'pu1 = plot(showBands and not na(pe) ? u1 : na, "+1σ", color=color.new(chart.fg_color, 55), style=plot.style_linebr)',
         'pl1 = plot(showBands and not na(pe) ? l1 : na, "-1σ", color=color.new(chart.fg_color, 55), style=plot.style_linebr)',
         'plot(showBands and not na(pe) ? u2 : na, "+2σ", color=color.new(color.red, 65), style=plot.style_linebr)',
@@ -181,7 +184,15 @@ else
     for statement in display_wiring:
         if lines.count(statement) != 1:
             raise fail(f"production display wiring must contain exactly once: {statement}")
-    forbidden = ("ta.sma(pe, lookback)", "ta.stdev(pe, lookback)", "s2 / n -", "statsRemove(", "varip")
+    forbidden = (
+        "ta.sma(pe, lookback)",
+        "ta.stdev(pe, lookback)",
+        "s2 / n -",
+        "statsRemove(",
+        "varip",
+        "hdrBg",
+        '"P/E vs history"',
+    )
     for statement in forbidden:
         if statement in compact:
             raise fail(f"production statistics contract contains forbidden logic: {statement}")
@@ -265,7 +276,8 @@ bool largeRollingFixtures = largeRollingCount == 10 and closeEnough(largeRolling
 bool bandFixtures = closeEnough(historyMean + historySigma, 20.0 + historyExpectedSigma) and closeEnough(historyMean - historySigma, 20.0 - historyExpectedSigma) and closeEnough(historyMean + 2.0 * historySigma, 20.0 + 2.0 * historyExpectedSigma) and closeEnough(historyMean - 2.0 * historySigma, 20.0 - 2.0 * historyExpectedSigma)
 bool verdictFixtures = statsVerdict(2.0) == "Rich" and statsVerdict(2.000001) == "Very rich" and statsVerdict(1.999999) == "Rich" and statsVerdict(1.0) == "Normal" and statsVerdict(1.000001) == "Rich" and statsVerdict(0.999999) == "Normal" and statsVerdict(-0.999999) == "Normal" and statsVerdict(-1.0) == "Normal" and statsVerdict(-1.000001) == "Cheap" and statsVerdict(-1.999999) == "Cheap" and statsVerdict(-2.0) == "Cheap" and statsVerdict(-2.000001) == "Very cheap"
 bool statusFixtures = displayZStatus(float(na), 3, 1.0, float(na)) == "Missing P/E" and displayZStatus(5.0, 1, float(na), float(na)) == "Need ≥2" and displayZStatus(7.0, 3, float(na), float(na)) == "Undefined" and displayZStatus(7.0, 3, 0.0, float(na)) == "σ=0" and displayZStatus(7.0, 3, 1.0, float(na)) == "Undefined" and displayZStatus(20.0, 3, 1.0, 1.25) == "1.25 sd"
-bool smokePass = ratioFixtures and growthFixtures and analystFixtures and emptyFixtures and oneFixtures and constantFixtures and historyFixtures and gapFixtures and longGapFixtures and transitionFixtures and largeFixtures and warmupFixtures and rollingFixtures and largeRollingFixtures and bandFixtures and verdictFixtures and statusFixtures
+bool positionColorFixtures = positionTextColor(statsVerdict(-2.000001)) == color.lime and positionTextColor(statsVerdict(-2.0)) == color.green and positionTextColor(statsVerdict(-1.000001)) == color.green and positionTextColor(statsVerdict(-1.0)) == chart.fg_color and positionTextColor(statsVerdict(0.0)) == chart.fg_color and positionTextColor(statsVerdict(1.0)) == chart.fg_color and positionTextColor(statsVerdict(1.000001)) == color.red and positionTextColor(statsVerdict(2.0)) == color.red and positionTextColor(statsVerdict(2.000001)) == #FF0000 and positionTextColor(statsVerdict(float(na))) == chart.fg_color
+bool smokePass = positionColorFixtures and ratioFixtures and growthFixtures and analystFixtures and emptyFixtures and oneFixtures and constantFixtures and historyFixtures and gapFixtures and longGapFixtures and transitionFixtures and largeFixtures and warmupFixtures and rollingFixtures and largeRollingFixtures and bandFixtures and verdictFixtures and statusFixtures
 if barstate.islast and not smokePass
     runtime.error("P/E contract smoke check failed")
 if barstate.islast

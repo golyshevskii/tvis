@@ -186,6 +186,10 @@ The mean and bands retain their statistical state through missing bars, but
 their plots have a gap whenever the current trailing P/E is unavailable. The
 table also shows mean `n/a` on that bar, matching the plotted/Data Window
 value; its mean label gives the selected window and number of valid samples.
+Position value text is green for Cheap, bright green for Very cheap, red for
+Rich and bright red for Very rich. Normal and unavailable statuses keep the
+chart foreground color. The table has five rows and no title row.
+
 The z/Position fields explain missing current P/E, fewer than two samples,
 zero sigma, or otherwise undefined sigma/z instead of presenting each case
 as an unexplained `n/a`.

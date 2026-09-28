@@ -1,5 +1,41 @@
 # Pine validation
 
+## Position styling — 2026-09-28
+
+Production SHA-256: `9230628c0e8e2690b94e6530c4e0dd9a8e36dfe2f9166417f657c30ca42120d4`.
+Contract harness SHA-256: `9b614bb60cbdf475994b0feb13687a3c96ad2bbb27e4a6905f8831139f7432f7`.
+
+Position value text uses the existing verdict: Cheap is `color.green`,
+Very cheap `color.lime`, Rich `color.red`, Very rich `#FF0000`.
+Normal and unavailable statuses retain `chart.fg_color`. The table has five
+rows, starting with Trailing P/E; its title row and `hdrBg` were removed.
+Ratio/statistics calculations, verdict boundaries and plots are unchanged.
+
+The new Pine color fixture was written before the helper: compilation failed
+with CE10271, missing `positionTextColor`, at 19:51:57 +04 (RED). After adding
+the helper, the production-derived harness compiled and displayed
+**Smoke result = 1.0000** at 19:53:11 (GREEN). Ten color cases cover all five
+verdicts, exact ±1/±2 boundaries and unavailable z. A scratch harness changing
+Very cheap from lime to ordinary green produced RE10142 at 19:53:41, confirming
+that the fixture rejects the lost brightness distinction.
+
+The exact uninstrumented production source compiled and ran at 19:54:49 on
+BATS:AAPL 1W, standard candles, native USD, dividend adjustment off; diluted
+EPS, All history, lookback 252, reported-quarter proxy, growth 8%, bands/table
+on, Top right/Normal. Full editor readback matched the production SHA above.
+The five-row table had no heading or empty first row, and the observed Rich
+value was red. Show info table was switched off: the table disappeared without
+runtime error; switching it back on restored the table. The original symbol,
+interval and hidden ORB/LuxAlgo instances were preserved; final production
+was saved in the user's already active editor copy. No Publish action occurred.
+
+Local checks `make check`, `make test` and `git diff --check` passed. Mutations
+that bypass the Position color, restore six rows or clear outside five rows
+were rejected by the source checks. Raw editor backup/readback, RED/GREEN DOM
+records and screenshots are supplementary temporary files in
+`/tmp/tvis-position-style/`. Historical numerical/live evidence below remains
+attached to its recorded source SHA; it was not rerun for this presentation change.
+
 ## Final-source live validation — 2026-09-28
 
 **Final-source Pine compilation, harness, live ticks and closed-bar reload passed

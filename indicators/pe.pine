@@ -132,6 +132,14 @@ statsZ(float value, float mean, float sigma) =>
 statsVerdict(float z) =>
     na(z) ? "n/a" : z > 2 ? "Very rich" : z > 1 ? "Rich" : z < -2 ? "Very cheap" : z < -1 ? "Cheap" : "Normal"
 
+positionTextColor(string positionVerdict) =>
+    switch positionVerdict
+        "Very cheap" => color.lime
+        "Cheap" => color.green
+        "Very rich" => #FF0000
+        "Rich" => color.red
+        => chart.fg_color
+
 displayZStatus(float currentPE, int count, float sigma, float z) =>
     na(currentPE) ? "Missing P/E" : count < 2 ? "Need ≥2" : na(sigma) ? "Undefined" : sigma == 0 ? "σ=0" : na(z) ? "Undefined" : str.tostring(z, "0.00") + " sd"
 // @contract pe-statistics:end
@@ -220,23 +228,20 @@ string forwardLabel = fwdMode == ANALYST_MODE ? "Reported Q ×4 proxy P/E" : "TT
 string forwardValue = not showFwd ? "Off" : na(fwdPE) ? "Unavailable" : str.tostring(fwdPE, "#.##")
 string sampleLabel = allHistory ? "All" : str.tostring(lookback) + " bars"
 
-var table t = table.new(tablePos, 2, 6, border_width=1, frame_width=1,
+var table t = table.new(tablePos, 2, 5, border_width=1, frame_width=1,
      frame_color=color.new(chart.fg_color, 65))
 if barstate.islast
     if showTable
-        color hdrBg = color.new(chart.fg_color, 88)
         color rowBg = chart.bg_color
-        table.cell(t, 0, 0, "P/E vs history", text_color=chart.fg_color, bgcolor=hdrBg, text_size=txtSize)
-        table.cell(t, 1, 0, "", text_color=chart.fg_color, bgcolor=hdrBg, text_size=txtSize)
-        table.cell(t, 0, 1, "Trailing P/E", text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
-        table.cell(t, 1, 1, na(pe) ? "Missing P/E" : str.tostring(pe, "#.##"), text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
-        table.cell(t, 0, 2, forwardLabel, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
-        table.cell(t, 1, 2, forwardValue, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
-        table.cell(t, 0, 3, "Mean P/E (" + sampleLabel + "; n=" + str.tostring(sampleCount) + ")", text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
-        table.cell(t, 1, 3, na(visibleMeanPE) ? "n/a" : str.tostring(visibleMeanPE, "#.##"), text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
-        table.cell(t, 0, 4, "Deviation from mean", text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
-        table.cell(t, 1, 4, zStatus, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
-        table.cell(t, 0, 5, "Position", text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
-        table.cell(t, 1, 5, na(zscore) ? zStatus : verdict, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
+        table.cell(t, 0, 0, "Trailing P/E", text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
+        table.cell(t, 1, 0, na(pe) ? "Missing P/E" : str.tostring(pe, "#.##"), text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
+        table.cell(t, 0, 1, forwardLabel, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
+        table.cell(t, 1, 1, forwardValue, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
+        table.cell(t, 0, 2, "Mean P/E (" + sampleLabel + "; n=" + str.tostring(sampleCount) + ")", text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
+        table.cell(t, 1, 2, na(visibleMeanPE) ? "n/a" : str.tostring(visibleMeanPE, "#.##"), text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
+        table.cell(t, 0, 3, "Deviation from mean", text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
+        table.cell(t, 1, 3, zStatus, text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
+        table.cell(t, 0, 4, "Position", text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)
+        table.cell(t, 1, 4, na(zscore) ? zStatus : verdict, text_color=positionTextColor(verdict), bgcolor=rowBg, text_size=txtSize)
     else
-        table.clear(t, 0, 0, 1, 5)
+        table.clear(t, 0, 0, 1, 4)
