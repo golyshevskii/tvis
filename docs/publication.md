@@ -7,7 +7,7 @@ record for exact contexts and limits. No TradingView Publish action was performe
 **ASCII title:** `tvis: P/E History & Annualized EPS`  
 **Author:** `golyshevskii`  
 **Source:** [`../indicators/pe.pine`](../indicators/pe.pine)  
-**SHA-256:** `325a2ca3915f7879590e66937b74110c01b48799f90f80800b221c9453b85f10`
+**SHA-256:** `9230628c0e8e2690b94e6530c4e0dd9a8e36dfe2f9166417f657c30ca42120d4`
 **License:** MPL-2.0, with the source notice and author attribution retained.
 
 ## English description
@@ -16,6 +16,9 @@ Compare a stock's trailing price-to-earnings ratio with its own loaded chart
 history. Choose diluted or basic trailing-twelve-month EPS. The indicator
 shows trailing P/E, its arithmetic mean, population standard-deviation bands,
 and **Deviation from mean** with a descriptive historical position.
+Position text is green for Cheap, brighter green for Very cheap, red for Rich
+and brighter red for Very rich; Normal retains the theme foreground color.
+The compact five-row table has no heading.
 
 Deviation from mean is the z-score: `(current P/E - mean) / sigma`. Its unit,
 `sd`, means standard deviations. Positive values are above the historical mean,
@@ -98,3 +101,7 @@ candles. The current daily bar is open: trailing P/E 39.09, proxy 45.06,
 mean 28.58, n=2009, Deviation from mean 1.57 sd, Position Rich. This image
 illustrates the interface; the separate validation record documents live ticks
 and comparisons of identical closed one-minute bars.
+
+The image records source `325a2ca…` before Position coloring and removal of the
+table heading. It illustrates the same calculations; the current presentation
+change is recorded separately in [validation](validation.md#position-styling--2026-09-28).
