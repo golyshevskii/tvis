@@ -171,15 +171,16 @@ else
             raise fail(f"production statistics wiring must contain exactly once: {statement}")
     if len(re.findall(r"\bstatsQueueUpdate\s*\(", source)) != 2:
         raise fail("production must contain one statsQueueUpdate declaration and one guarded call")
-    band_plots = (
+    display_wiring = (
+        'table.cell(t, 0, 4, "Deviation from mean", text_color=chart.fg_color, bgcolor=rowBg, text_size=txtSize)',
         'pu1 = plot(showBands and not na(pe) ? u1 : na, "+1σ", color=color.new(chart.fg_color, 55), style=plot.style_linebr)',
         'pl1 = plot(showBands and not na(pe) ? l1 : na, "-1σ", color=color.new(chart.fg_color, 55), style=plot.style_linebr)',
         'plot(showBands and not na(pe) ? u2 : na, "+2σ", color=color.new(color.red, 65), style=plot.style_linebr)',
         'plot(showBands and not na(pe) ? l2 : na, "-2σ", color=color.new(color.green, 65), style=plot.style_linebr)',
     )
-    for statement in band_plots:
+    for statement in display_wiring:
         if lines.count(statement) != 1:
-            raise fail(f"production band plot must contain exactly once: {statement}")
+            raise fail(f"production display wiring must contain exactly once: {statement}")
     forbidden = ("ta.sma(pe, lookback)", "ta.stdev(pe, lookback)", "s2 / n -", "statsRemove(", "varip")
     for statement in forbidden:
         if statement in compact:

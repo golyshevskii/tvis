@@ -1,5 +1,356 @@
 # Pine validation
 
+## Final-source live validation — 2026-09-28
+
+**Final-source Pine compilation, harness, live ticks and closed-bar reload passed
+in both All history and Rolling 252.** The Sunday realtime gap recorded below
+is now closed. The publication package is prepared; no TradingView
+publication was performed.
+
+| Artifact | SHA-256 |
+|---|---|
+| Final `indicators/pe.pine` | `325a2ca3915f7879590e66937b74110c01b48799f90f80800b221c9453b85f10` |
+| Generated contract harness | `a39e59794a25471e7b1f8f1d25216adbe904712401bf2c8349d0c03e87f80d69` |
+| Restored data probe | `aa0c5bda3b156428fe3c3aca058bd964fb71fe82b4c6c9ef72b8246fe80401ce` |
+
+Compared with the September 27 source, production changes are limited to the
+visible table label `Z-score` → `Deviation from mean` and replacement of the
+stale timeframe-coverage comment with supported-context instructions. Financial
+requests, ratio/statistics functions, inputs and execution flow are unchanged.
+The earlier numerical and performance records retain their original SHAs;
+they were not presented as new runs. The renamed row still displays the same
+z-score and `sd` unit. README and publication text explain its formula and sign.
+
+The existing local checker now requires exactly one actual stripped table-cell
+line with the new label. Reverting the label while adding a matching comment,
+duplicating the actual line, or removing it each fails the check; the real
+source passes. This is a literal UI rename, not a numerical behavior change.
+The regenerated harness compiled and ran in Pine with **Smoke result = 1.0000**
+(19:21 +04). The exact production source was then pasted, copied back in full,
+SHA-checked after CRLF normalization, saved, compiled and executed. A post-live
+readback from saved **tvis: P/E Final Validation** again matched the final SHA.
+No unexpected compiler diagnostic or runtime error occurred in these runs.
+
+### Live procedure and observations
+
+Chart `UB8lbzak`, search symbol NASDAQ:AAPL, runtime **BATS:AAPL**, 1-minute
+standard candles, native USD, regular session, dividend adjustment off.
+TradingView reported market open and NASDAQ data from Cboe One updated every
+five seconds. Inputs: diluted TTM EPS, reported-quarter estimate ×4 proxy on,
+growth 8%, lookback 252, bands/table on, Top right/Normal. Only the window mode
+changed between the two runs. Times below are **2026-09-28, UTC-4**; add four
+hours for UTC or eight for Tbilisi.
+
+| Mode / open bar | Observation time | Close | Trailing P/E | Proxy | Mean | +1σ | -1σ | +2σ | -2σ |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| All / 11:21 | 11:21:34 | 340.84 | 39.07 | 45.04 | 38.07 | 39.01 | 37.13 | 39.95 | 36.18 |
+| All / 11:21 | 11:21:49 | 340.82 | 39.07 | 45.04 | 38.07 | 39.01 | 37.13 | 39.95 | 36.18 |
+| All / 11:21 | 11:21:54 | 340.87 | 39.08 | 45.04 | 38.07 | 39.01 | 37.13 | 39.95 | 36.18 |
+| Rolling / 11:23 | 11:23:24 | 341.19 | 39.11 | 45.09 | 39.06 | 39.15 | 38.96 | 39.25 | 38.86 |
+| Rolling / 11:23 | 11:23:42 | 340.90 | 39.08 | 45.05 | 39.06 | 39.15 | 38.96 | 39.25 | 38.86 |
+| Rolling / 11:23 | 11:23:58 | 340.91 | 39.08 | 45.05 | 39.06 | 39.15 | 38.96 | 39.25 | 38.86 |
+
+All-history table count stayed at **5572** within 11:21 and advanced to **5573**
+on the next minute; Rolling count was **252**. Multiple tick updates therefore
+did not accumulate extra samples within a bar. The displayed mean/bands need
+not move at every tick because they are rounded to two decimals.
+
+After each next minute opened, the preceding bar was selected in Data Window.
+Layout saving was confirmed by **Все изменения сохранены** before each normal
+page reload. The same date/time was selected again after reload; no symbol,
+interval, session, adjustment, currency or indicator input changed. Reload
+restored the saved viewport; cursor selection was repeated on the same bar.
+
+| Mode / closed bar | Before / after observation time | Close | P/E | Proxy | Mean | +1σ | -1σ | +2σ | -2σ |
+|---|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| All / 11:21 | 11:22:09 / 11:22:38 | 340.88 | 39.08 | 45.05 | 38.07 | 39.01 | 37.13 | 39.95 | 36.18 |
+| Rolling / 11:23 | 11:24:15 / 11:24:38 | 340.94 | 39.08 | 45.05 | 39.06 | 39.15 | 38.96 | 39.25 | 38.86 |
+
+**All eight displayed numbers matched before/after in both rows**, including
+price. Indicator differences were 0.00, within the ±0.005 display tolerance
+from `precision=2`; the hidden growth plot remained unavailable. The supervisor
+independently compared both raw output rows and prices. This proves observable
+live updates, bar finalization and reload stability for these contexts, not
+hidden floating-point identity or immunity to future provider revisions.
+The table always describes the current last bar, so its current z/verdict is
+not treated as a historical Data Window value.
+
+An earlier reload before layout-save acknowledgement reopened the old NOW
+layout and was excluded. Likewise, an observation immediately after changing
+window mode still contained pre-recalculation values and was excluded. Neither
+is reported as a numerical mismatch or a passing final-source comparison.
+
+Raw DOM snapshots, screenshots, source readbacks and harness evidence were
+saved outside the repository at `/tmp/tvis-task7-live/`. In particular,
+`all325-closed-before.txt` / `all325-closed-after.txt` and the corresponding
+`rolling325-*` pair contain the selected date, time, price and complete output
+row; `all325-live1/2/3.txt` and `rolling325-live2/3/4.txt` contain the tick
+observations. Reproduce by saving the exact source/layout, recording three
+updates on one open minute, selecting that minute after the next one opens,
+then normally reloading and selecting the identical closed minute.
+
+### Saved copies and restoration
+
+The original Data Probe source was backed up before testing. Its chart instance
+was temporarily removed to permit adding the separate final copy; the user's
+old P/E instance and hidden ORB/LuxAlgo instances were preserved. After testing,
+the final test instance was removed and the exact original Data Probe was
+added again. Its source readback matched the probe SHA above; it compiled and
+showed the original EPS/estimate plots, comparison JPY, and the source-default
+log start 2026-01-01 00:00 UTC. The layout returned to NOW 1M standard candles
+with T1 watchlist, editor/data window closed, and was saved. The separately
+saved final editor copy remains the verified production version.
+
+The updated publication image shows this final source on AAPL 1D at 11:25:54
+UTC-4, with the production pane enlarged. Its current daily bar is open; this
+illustration is separate from the closed-minute comparisons above.
+
+
+## Historical final validation — 2026-09-27
+
+**Status on September 27: historical/numerical checks passed; realtime was NOT RUN.**
+The September 28 final-source live record above supersedes this remaining gap.
+This checkpoint was not an all-green release sign-off. The 2026-09-25 realtime observation
+below used an earlier source SHA and does not validate live behavior of the
+final source. Production code was unchanged at the September 27 checkpoint.
+
+| Artifact | SHA-256 |
+|---|---|
+| Final `indicators/pe.pine` | `2c4d1b711e0c76ac552e693c24cb368a068b27978d323995897a79080da73bd2` |
+| Generated contract harness | `fc39442088ee2d6b09360600a76fb7183b0829abf13e21a55dd28cdaef4d095e` |
+| Production plus final numerical measurement suffix | `88a4fb0269df420f10ed7559a866f6646fae5f149f8a135499e44072e2e6656c` |
+| Production plus monthly raw export suffix | `f82a169bd9f17cb7bc4ea2137f54890061168f8bb6e67dd36ae807f3a7b7f83f` |
+| Unchanged data probe | `aa0c5bda3b156428fe3c3aca058bd964fb71fe82b4c6c9ef72b8246fe80401ce` |
+
+Observations used chart `UB8lbzak`, 08:26–08:42 +04. US chart-search IDs
+NASDAQ:AAPL/GOOG, NYSE:NOW/SONY/FIG and AMEX:SEB/SPY executed as the full
+**BATS:** IDs below through Cboe One. SP:SPX executed as **SP_DLY:SPX**.
+All cases use standard candles, regular sessions, native quote currency and
+dividend adjustment off unless explicitly marked Heikin Ashi. No price/EPS
+adjustment was introduced. All financial requests retain the selected source
+ID, TTM, quote currency and `ignore_invalid_symbol=true`.
+
+### Measurement method and coverage
+
+The exact production text was copied into Pine Editor, copied back and compared
+after CRLF-to-LF normalization, then compiled and executed on NOW 1M and AAPL
+1D. The matrix used that complete unchanged production as a byte-for-byte
+prefix, with a temporary logging/oracle suffix; it is not presented as the
+same hash as the uninstrumented source. No unexpected compiler warning or
+runtime error was observed in these production/matrix runs.
+
+The suffix retained each production P/E in an array. At
+`barstate.islastconfirmedhistory`, a separate ordinary sum/count over the
+selected chart-bar interval calculated mean, then a second pass calculated
+`sum((x-mean)^2)/n` and its square root. It required exact count/na agreement
+and `abs(actual-expected) <= max(1e-8, 1e-10*abs(expected))` for mean/sigma,
+raising a runtime error on disagreement. **All rows passed.** This is a
+last-confirmed-bar comparison, not an assertion on every historical bar.
+The earlier all-bars equivalence evidence remains in [performance](performance.md).
+
+Raw dates, close, EPS, estimate, P/E and proxy/scenario values were logged to
+eight decimals. A separate Python calculation recomputed the last logged
+P/E from price/EPS, the proxy/scenario from its denominator, and z from
+`(P/E-mean)/sigma`, then applied the strict verdict boundaries: **20/20 records
+passed**, including unavailable values and the synthetic-context diagnostic.
+Ratio tolerance was 1e-8; displayed z tolerance was 1e-7 because rounding an
+8-decimal sigma can amplify division error. This display comparison does not
+relax the full-precision Pine mean/sigma tolerance above.
+
+Session raw DOM logs, CSV, suffixes and the runnable arithmetic check were
+saved at validation time in `/tmp/tvis-task7-m2BvYh/`. These temporary files
+were no longer present on 2026-09-28; the recorded independent checks and
+measurements below are the retained report, not a claim of current raw-file
+availability. Reproduce
+by appending measurement code to a scratch copy, logging the selected raw
+fields and using the independent two-pass arithmetic above. Never leave a
+measurement suffix in the installed production script.
+
+### Stocks, timeframes and input branches
+
+A = diluted TTM, Rolling 60, reported-quarter estimate x4 proxy on.
+B = basic TTM, All history, growth assumption 8% on; inactive lookback 252.
+All rows have bands/table on, Top right/Normal. The date is the open timestamp
+of the last confirmed chart bar; monthly September is still unfinished, so
+monthly oracle rows end in August. Intraday timestamps below are UTC.
+
+| Runtime ID | TF / last confirmed bar | Inputs | Loaded bars / valid n | Mean | Sigma | z / verdict |
+|---|---|---|---:|---:|---:|---|
+| BATS:AAPL | 60 / 2026-09-25 19:30 | A | 6528 / 60 | 38.59070917 | 0.35055450 | 1.43939767 / Rich |
+| BATS:AAPL | D / 2026-09-25 | A | 11533 / 60 | 36.80069469 | 1.31659186 | 1.74544668 / Rich |
+| BATS:AAPL | W / 2026-09-21 | A | 2390 / 60 | 35.18017759 | 2.12047022 | 1.84796653 / Rich |
+| BATS:AAPL | M / 2026-08-03 | A | 549 / 60 | 30.80675490 | 4.59009845 | 1.20161006 / Rich |
+| BATS:AAPL | W / 2026-09-21 | B | 2390 / 418 | 28.36105723 | 6.67328614 | 1.58677324 / Rich |
+| BATS:GOOG | 60 / 2026-09-25 19:30 | B | 6528 / 6528 | 24.06586332 | 3.67637145 | -1.94058257 / Cheap |
+| BATS:GOOG | D / 2026-09-25 | B | 3144 / 2008 | 26.00006350 | 5.02641338 | -1.80446592 / Cheap |
+| BATS:GOOG | W / 2026-09-21 | B | 653 / 418 | 26.01664206 | 5.05596027 | -1.79719968 / Cheap |
+| BATS:GOOG | M / 2026-08-03 | B | 150 / 96 | 25.69223219 | 5.04707989 | -1.79184804 / Cheap |
+
+For example, AAPL 2026-09-25 D close 341.07 / diluted EPS 8.7233 =
+39.09873557; reported estimate 1.891883 gives proxy 45.07017612. AAPL basic
+EPS 8.7566 gives P/E 38.95004911. GOOG same-day close 341.08 / basic EPS
+20.1464 = 16.93007187. The 60-minute last prices can differ from daily close
+(AAPL 341.04 and GOOG 341.11); comparisons never mix those bar contexts.
+
+This covers the branches without claiming every Cartesian combination of
+symbol, timeframe, EPS, window and forward mode was tested.
+
+### Required real-data cases
+
+Unless overridden below, inputs are diluted TTM, All history, proxy on,
+inactive growth 8%/lookback 252, bands/table on, Top right/Normal; USD.
+
+| Scenario / runtime ID | TF / date | Actual result |
+|---|---|---|
+| Negative EPS, BATS:NOW | M / 2018-09-04 through 2019-05-01 | Nine monthly bars excluded. First close 39.126, EPS -0.0712, P/E na; March-May EPS -0.0456. |
+| Long missing-EPS interval, BATS:NOW | M / 2012-06-01 through 2018-08-01 | 75 consecutive bars had missing EPS/P/E, and did not enter count. The later positive-EPS series resumed without a runtime error. |
+| Missing proxy with valid trailing, BATS:SEB | D / 2026-09-25 | Close 3969.18, EPS 661.8399, P/E 5.99719056; estimate/proxy na. n=1883, mean 48.56838352, sigma 119.00512911, z=-0.35772570 / Normal. |
+| ETF, BATS:SPY | D / 2026-09-25 | 8472 loaded bars, n=0, all EPS/ratios/statistics unavailable, no runtime failure. Close 771.35. |
+| Index, SP_DLY:SPX | D / 2026-09-25 | 25323 loaded bars, n=0, all ratios/statistics unavailable, no runtime failure. Currency reports NONE; close 7743.41. |
+| FX, OANDA:EURUSD | D / 2026-09-24 21:00 UTC | 6336 loaded bars, n=0, all ratios/statistics unavailable, no runtime failure. Close 1.13911. |
+| Crypto, BITSTAMP:BTCUSD | D / 2026-09-26 00:00 UTC | 5486 confirmed bars, n=0, all ratios/statistics unavailable, no runtime failure. Close 84433.05. This is not equity realtime evidence. |
+| Short history, BATS:FIG | M / 2025-07-01 through 2026-08-03 | 14 confirmed bars, only two valid P/E samples, 12 nonpositive EPS bars. n=2, mean 496.47247461, sigma 120.84446820. Latest EPS -3.0645/P/E na; estimate 0.063333 produces proxy 108.51372902 at close 27.49. First bar close 115.5/EPS 0.1871 = P/E 617.31694281. |
+| Negative trailing / independent proxy, BATS:SONY | D / 2026-09-25 | Diluted EPS -0.2384, trailing/z/verdict unavailable; estimate 0.283148 and close 23.55 give proxy 20.79301284. 185 nonpositive EPS bars; historical n=1823, mean 14.79344769, sigma 3.66868358, but visible mean is hidden on the invalid current bar. |
+| SONY basic/growth | D / 2026-09-25 | Basic EPS -0.2338; trailing and growth scenario unavailable. n=1823, internal mean 14.64368644/sigma 3.70278815; visible mean/z unavailable. |
+| Reporting/quote currencies, BATS:SONY | D / 2026-09-25, original data probe, comparison JPY | Default EPS and explicit quote USD both -0.2384; explicit JPY -38.60363520. Estimate default/quote USD 0.283148, JPY 46.26383487. Production uses quote currency; no guessed FX or ADR multiplier. |
+
+### Corporate actions and ADR units
+
+Events were checked against issuer sources; matching price/EPS scaling was
+then measured in TradingView. These checks establish the observed local
+transitions, not a guarantee for every corporate action or provider revision.
+
+- Apple [announced four-for-one split-adjusted trading on 2020-08-31](https://www.apple.com/ie/newsroom/2020/07/apple-reports-third-quarter-results/).
+  BATS:AAPL D diluted/proxy: 2020-08-28 close 124.8075, EPS 3.2893,
+  P/E 37.94348342; 08-31 close 129.04, same EPS, P/E 39.23023136.
+  Both sides are already on comparable units; no factor-four correction.
+- Sony [announced a five-for-one split and unchanged 1:1 ADR ratio](https://www.sony.com/en/SonyInfo/IR/news/20240514_E_02.pdf);
+  its [Form 8937](https://www.sony.com/en/SonyInfo/IR/stock/202411/Form_8937_E.pdf)
+  specifies ADR distribution on 2024-10-08. BATS:SONY D basic/growth:
+  09-30 close 19.314/EPS 1.2256/P/E 15.75881201; 10-01
+  19.36/1.2256/15.79634465. Around the ADR distribution itself, 10-07
+  19.132/1.2256/15.61031332, 10-08 19.028/1.2256/15.52545692,
+  10-09 19.05/1.2256/15.54340731. No factor-five discontinuity appears.
+- ServiceNow [specified five-for-one split-adjusted trading on 2025-12-18](https://newsroom.servicenow.com/press-releases/details/2025/ServiceNow-Shareholders-Approve-5-for-1-Stock-Split/default.aspx).
+  BATS:NOW D diluted/proxy: 12-17 close 156.478/EPS 1.654/P/E
+  94.60580411; 12-18 153.38/1.654/92.73276904; 12-19
+  155.31/1.654/93.89963724. The observed historical close and EPS need no
+  additional split multiplier. This does not independently audit every
+  historical EPS figure supplied by the provider.
+
+### NOW monthly mean above 1000
+
+The user-reported case was reproduced on the exact final production source,
+with BATS:NOW 1M, diluted TTM, All history and default inputs. It displayed
+P/E 84.69 and mean **1033.82**, also seen in the pre-existing chart copy.
+
+| Monthly bar timestamp | Adjusted close (USD) | EPS (USD/share) | P/E |
+|---|---:|---:|---:|
+| 2019-06-03 | 54.914 | 0.0025 | 21965.6 |
+| 2019-07-01 | 55.478 | 0.0025 | 22191.2 |
+| 2019-08-01 | 52.368 | 0.0025 | 20947.2 |
+
+The full export had 171 confirmed monthly bars through 2026-08-03, of which
+87 had valid P/E. An independent Python `math.fsum(close/eps)` over raw positive
+EPS rows gave **90891.12285573111**; dividing by 87 gave
+**1044.7255500658748**, population sigma **3918.310581098488**. Pine logged
+1044.72555007 and 3918.31058110. The three listed months contribute **71.628557%**
+of that sum. The maximum monthly observation is July 2019, not September 2026.
+
+The unfinished September bar adds close 135.62 / EPS 1.6013 =
+84.6936863798164 as sample 88, giving **1033.8160970694423**. It is included
+by the contract even though the market was closed for the weekend.
+Rolling 252 gives the same displayed mean because only 172 monthly chart
+bars are loaded. Rolling 60 gives **209.43732862854867** including September
+(display 209.44); the confirmed-August result is 217.54933621, sigma
+175.02457771, n=60. These windows exclude the 2019 observations by date;
+no outlier clamp, median, trimming or denominator change was made.
+
+To reproduce the raw export, append this suffix to a scratch copy of the
+exact production source, choose NOW 1M and inspect Pine Logs:
+
+```pine
+var array<string> auditRows = array.new<string>()
+string auditRow = str.format_time(time, "yyyy-MM-dd", "UTC") + "," + str.tostring(close, "0.########") + "," + str.tostring(epsTTM, "0.########") + "," + str.tostring(pe, "0.########")
+array.push(auditRows, auditRow)
+if barstate.islastconfirmedhistory
+    log.info(array.join(auditRows, "\n"))
+```
+
+Export columns are date, close, EPS, P/E. Independently filter finite
+`eps > 0`/`close > 0`, compute each `close/eps`, sum, divide by count and use
+population standard deviation. For Rolling, slice the last N rows before
+filtering missing values. Subsequent provider revisions can change the numbers.
+
+### Earnings, synthetic context, outputs and reload
+
+NOW D, diluted/proxy: on 2026-07-22 close 95.46, EPS 1.6013 and carried estimate
+0.970137 gave trailing 59.61406357/proxy 24.59961840. On 07-23 the estimate
+changed to 0.862141, close 91.94 gave 57.41584962/26.66037226; 07-24 close
+98.78 with the same EPS/estimate gave 61.68737900/28.64380652. These are
+provider-mapped historical observations, not proof of release-time availability.
+
+Heikin Ashi was tested on NOW D with the same inputs/date, 2026-09-25.
+It did **not** reject the chart: synthetic close 137.075/EPS 1.6013 yielded
+P/E 85.60232311 instead of standard close 135.62/P/E 84.69368638. There is no
+standard-price substitution. This empirically confirms the explicit
+**standard-candles-only restriction** in the contract and publication draft;
+synthetic-chart support is not claimed. Standard candles were restored.
+
+Exact uninstrumented production on BATS:AAPL D, 2026-09-25, diluted/All/proxy:
+P/E 39.10, proxy 45.07, mean 28.57; bands 35.26, 21.88, 41.95, 15.20;
+table n=2008, z=1.57, Rich. Turning proxy, bands and table off left trailing
+39.10/mean 28.57 and emptied both forward plots and all four band plots;
+the table disappeared. Re-enabling them restored the same values and table.
+Saving the layout and performing a normal reload reproduced every displayed
+value on that same last closed bar (difference 0.00, precision-2 tolerance
+0.005). The [clean image](images/pe-aapl-daily.png) enlarges only the final
+indicator pane on this standard-candle chart.
+
+### Contract harness drift proof
+
+A scratch production copy replaced `price / eps` with `price / (eps * 2)`.
+Its SHA was `d36c3e6088c85d9d595d9033d2e68d7cda1f12141e06344dd28e010d3faae92a`;
+regenerating with the existing `render_harness` produced
+`1fc44be25e1a2d1550325a3cd2f13d2be899a4d802ec3001ebdf3e7bd490e08e`.
+The editor text matched that file. On NOW D at 08:35:18 +04 it failed with
+`RE10142`, `Error on bar 3579: P/E contract smoke check failed` — expected RED.
+The restored exact generated harness at the hash above compiled at 08:36:11
+and displayed `Smoke result = 1.0000`, with no current runtime error. The
+repository production file was never mutated; no new logic was implemented.
+
+### Editor, layout and package restoration
+
+The Basic account rejected adding another indicator, so runtime checks reused
+an existing Data Probe slot after a local backup. That slot was restored to
+the unchanged data-probe source, compiled, and again showed its original plots.
+The separately saved **tvis: P/E Final Validation** editor copy contains the
+exact final production file: a fresh clipboard readback gave SHA-256
+`2c4d1b711e0c76ac552e693c24cb368a068b27978d323995897a79080da73bd2`.
+The user chart's pre-existing P/E instance was left intact; it is not claimed
+to have been upgraded. The final-copy name distinguishes the verified source.
+The layout returned to NOW 1M, standard candles, dark theme, the original
+indicator instances and T1 watchlist; editor/logs closed, price autoscale
+restored. It was saved. No script was published.
+
+The local package is [README](../README.md), the unchanged production source,
+this report, the [publication draft](publication.md) and its PNG. Final local
+commands are `make check`, `make test`, `git diff --check`, and
+`shasum -a 256 indicators/pe.pine`; local gates do not substitute for Pine
+runtime or the outstanding realtime observation.
+
+### Acceptance gap recorded on September 27 (superseded above)
+
+**Realtime on this exact historical source SHA was NOT RUN.** On Sunday 2026-09-27 the
+supported equities checked here reported market closed. No live supported
+stock's multiple ticks, bar close and subsequent reload were observed for
+this SHA. Historical reload and crypto activity do not close that criterion.
+The final realtime acceptance criterion remained open at this checkpoint.
+The September 28 record above closes it on the updated final source with
+multiple live ticks, bar close and the same closed bar after normal reload
+in both window modes.
+
+
 Local commands verify files and generate source. They do not compile or run
 Pine. Pine GREEN exists only after the editor compiles the script and the
 script runs on a chart without diagnostics.

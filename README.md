@@ -1,20 +1,56 @@
 # tvis
 
-TradingView Indicator Scripts
+TradingView Indicator Scripts by **golyshevskii**.
 
-## Validation
+## Install the P/E indicator
 
-Run `make uv.init` once to install the locked Python tooling.
+Copy the complete [`indicators/pe.pine`](indicators/pe.pine) file into a new
+TradingView Pine Editor indicator, save it as
+**tvis: P/E History & Annualized EPS**, then choose **Add to chart**.
+To update an existing copy, replace its complete editor text, save, and use
+**Update on chart**. Keep the MPL notice and author line.
 
-`make check` runs Python formatting, lint, complexity, type, required-file,
-attribution, and production-linked contract checks. `make test` generates
-`tmp/pe-contract-tests.pine` from that block and records the production source
-SHA in the harness. Neither command compiles or executes Pine; follow
-[`docs/validation.md`](docs/validation.md) in TradingView Pine Editor for that.
+Use standard candles, regular sessions, native quote currency and dividend
+adjustment off. Synthetic charts are unsupported: the script does not reject
+them and their synthetic close changes the calculated P/E.
+
+Trailing P/E uses positive basic or diluted TTM EPS. The optional second ratio
+uses either a reported-quarter estimate annualized by four or a user-assumed
+TTM growth rate. It is not an NTM consensus forecast. All history averages
+valid loaded chart bars; Rolling uses the last N consecutive chart bars.
+Small positive EPS can create very large P/E values and dominate the mean.
+
+**Deviation from mean** is `(current P/E - mean) / sigma`, shown in standard
+deviations (`sd`). Positive values are above the mean; negative values are
+below it. For example, `1.5 sd` means 1.5 standard deviations above the mean.
+
+See the [calculation contract](docs/calculation-contract.md),
+[validation record](docs/validation.md), [performance measurements](docs/performance.md)
+and [publication draft](docs/publication.md). Final-source live ticks and
+closed-bar reload passed in both window modes on 2026-09-28. The publication
+draft is prepared; no script has been published.
+
+## Local verification
+
+Run `make uv.init` once to install the locked Python tooling, then:
+
+```sh
+make check
+make test
+git diff --check
+shasum -a 256 indicators/pe.pine
+```
+
+`make check` runs formatting, lint, complexity, type, required-file, attribution
+and production-linked contract checks. `make test` generates
+`tmp/pe-contract-tests.pine` with the production source SHA.
+These commands do not compile or execute Pine. Import the generated harness
+into a separate test script in Pine Editor, run it on a chart, and require
+`Smoke result = 1`. Follow the separate real-data/reload/realtime checks in
+the validation record. Restore the production source after using a test slot.
 
 ## Licensing
 
-Repository support files are available under the MIT license in [`LICENSE`](LICENSE).
-The imported Pine source and its working derivative retain the original
-Mozilla Public License 2.0 notice and attribution to golyshevskii in their file
-headers; the repository MIT license does not replace those terms.
+The Pine indicator is licensed under MPL-2.0 with attribution to
+**golyshevskii** in its header. Repository support files are licensed under
+MIT in [`LICENSE`](LICENSE); MIT does not replace the Pine source's MPL terms.

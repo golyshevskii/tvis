@@ -102,9 +102,12 @@ The explicit quote argument in production states the contract.
 ADR conversion/split policy is supplied by the provider; this probe does
 not certify arbitrary ADR ratios or corporate-action histories.
 
+The final 2026-09-27 matrix additionally measured standard regular-session
+60-minute and monthly AAPL/GOOG bars; see [validation](validation.md#historical-final-validation--2026-09-27).
 Currency overrides on the chart, minor-unit quotes (e.g. GBX), synthetic
-charts, extended sessions and other timeframes remain outside the verified
-matrix. Do not claim support or infer a pence/pounds scale factor. Production
+charts and extended sessions remain outside the supported context. The
+Heikin Ashi check confirmed that the script uses the synthetic close; it does
+not reject that chart type or substitute a standard price. Do not claim support or infer a pence/pounds scale factor. Production
 comments explain these restrictions; extending them requires
 a new units/price-context probe. The working matrix is not a ticker
 allowlist: other stocks may work, but they have not been certified here.
@@ -112,6 +115,10 @@ allowlist: other stocks may work, but they have not been certified here.
 ## History and statistics
 
 - Statistics use valid **trailing P/E only**, including the current bar.
+  This is an equally weighted arithmetic mean of valid chart-bar ratios,
+  not price divided by average EPS. Small positive EPS can produce extreme
+  P/E and dominate mean/sigma. No trimming or cap is applied; NOW
+  June-August 2019 is a measured example in the final validation record.
   All history starts at the first loaded bar and includes each valid bar
   once, not the company's entire lifetime. Missing P/E contributes nothing.
 - Rolling N means the last N consecutive **chart bars**, including current,
