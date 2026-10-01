@@ -4,7 +4,7 @@
 //@version=6
 
 //
-// tvis: P/E History & Annualized EPS
+// tvis: P/E History
 //  - Trailing P/E:  close / TTM EPS            (real, from request.financial)
 //  - Proxy/scenario P/E: close / annualized EPS (see notes below)
 //  - Historical context: running mean + 1σ/2σ bands + live z-score
@@ -24,7 +24,7 @@
 //     currency, and ordinary share/unit prices. Chart currency overrides, minor-unit
 //     quotes, synthetic charts, and extended sessions are unverified.
 
-indicator("tvis: P/E History & Annualized EPS", precision=2)
+indicator("tvis: P/E History", precision=2)
 
 const string ANALYST_MODE = "Reported-quarter estimate ×4 (proxy)"
 const string GROWTH_MODE = "Growth assumption"
