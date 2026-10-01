@@ -6,7 +6,7 @@ TradingView Indicator Scripts by **golyshevskii**.
 
 Copy the complete [`indicators/pe.pine`](indicators/pe.pine) file into a new
 TradingView Pine Editor indicator, save it as
-**tvis: P/E History & Annualized EPS**, then choose **Add to chart**.
+**tvis: P/E History**, then choose **Add to chart**.
 To update an existing copy, replace its complete editor text, save, and use
 **Update on chart**. Keep the MPL notice and author line.
 

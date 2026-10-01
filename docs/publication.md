@@ -4,10 +4,10 @@
 closed-bar reload passed in both window modes on 2026-09-28; see the validation
 record for exact contexts and limits. No TradingView Publish action was performed.
 
-**ASCII title:** `tvis: P/E History & Annualized EPS`  
+**ASCII title:** `tvis: P/E History`\
 **Author:** `golyshevskii`  
 **Source:** [`../indicators/pe.pine`](../indicators/pe.pine)  
-**SHA-256:** `9230628c0e8e2690b94e6530c4e0dd9a8e36dfe2f9166417f657c30ca42120d4`
+**SHA-256:** `0d424df47f26bb5c52f155c6b1f0ee0f8babbae6fd0970cc0803cc8ad87e1d00`
 **License:** MPL-2.0, with the source notice and author attribution retained.
 
 ## English description
